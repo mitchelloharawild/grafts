@@ -1,0 +1,16 @@
+Package: grafts
+Title: Graph Forecasts for Time Series
+Version: 0.0.0.9000
+Authors@R: 
+    person("Mitchell", "O'Hara-Wild", , "mail@mitchelloharawild.com", role = c("aut", "cre"),
+           comment = c(ORCID = "0000-0001-6729-7695"))
+Description: Interactive exploration of graph-temporal data, such as
+    hierarchical and grouped time series, and their forecasts. The series
+    graph and the graph of key combinations are drawn in a browser app,
+    beside plots of the series reached and their forecasts from a fable.
+License: `use_mit_license()`, `use_gpl3_license()` or friends to pick a
+    license
+Encoding: UTF-8
+Language: en-GB
+Roxygen: list(markdown = TRUE)
+RoxygenNote: 8.0.0

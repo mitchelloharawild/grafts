@@ -1,0 +1,22 @@
+# R CMD build/check output
+inst/doc
+docs
+*.tar.gz
+
+# R session & workspace
+.Rhistory
+.RData
+.Rproj.user
+man/.Rapp.history
+
+# knitr / R Notebooks / caching
+.*.Rnb.cached
+
+# Quarto / documentation tooling
+/.quarto/
+
+# Development notes
+/_dev/
+
+# macOS
+.DS_Store
