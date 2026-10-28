@@ -9,10 +9,11 @@ Description: Interactive exploration of graph-temporal data, such as
     graph and the graph of key combinations are drawn in a browser app,
     beside plots of the series reached and their forecasts from a fable.
 License: MIT + file LICENSE
-Encoding: UTF-8
-Language: en-GB
-Roxygen: list(markdown = TRUE)
-RoxygenNote: 8.0.0
+URL: https://pkg.mitchelloharawild.com/grafts/,
+    https://github.com/mitchelloharawild/grafts
+BugReports: https://github.com/mitchelloharawild/grafts/issues
+Depends: 
+    R (>= 4.1.0)
 Imports: 
     cli,
     fabletools,
@@ -26,9 +27,11 @@ Imports:
     tsibble,
     utils,
     vctrs
-Depends: 
-    R (>= 4.1.0)
 Suggests: 
     fable,
     testthat (>= 3.0.0)
 Config/testthat/edition: 3
+Encoding: UTF-8
+Language: en-GB
+Roxygen: list(markdown = TRUE)
+RoxygenNote: 8.0.0
