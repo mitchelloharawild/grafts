@@ -1,8 +1,12 @@
 # grafts
 
-grafts (**gra**ph **f**orecasts for **t**ime **s**eries) explores
-aggregated time series, such as hierarchical and grouped series, through
-their graphs.
+grafts (**gra**ph **f**orecasts for **t**ime **s**eries) is an
+interactive browser app for exploring aggregated time series, such as
+hierarchical, grouped and nested series, and their forecasts.
+
+![The grafts explorer app](reference/figures/app.png)
+
+The grafts explorer app
 
 ## Installation
 
@@ -15,109 +19,61 @@ You can install the development version of grafts from
 pak::pak("mitchelloharawild/grafts")
 ```
 
-## Example
+## Usage
 
-[`graph_explore()`](https://pkg.mitchelloharawild.com/grafts/reference/graph_explore.md)
-starts the app in the background and opens it in a browser. Stop it with
-[`plumber2::api_stop()`](https://plumber2.posit.co/reference/api_run.html)
-before starting another.
+grafts explores time series stored in a
+[tsibble](https://tsibble.tidyverts.org/) whose keys have been
+aggregated with
+[`aggregate_key()`](https://fabletools.tidyverts.org/reference/aggregate_key.html).
+Any structure of keys works, whether hierarchical (`State / Region`),
+grouped (`Purpose * State`) or a mix of both.
 
 ``` r
 
 library(grafts)
 library(fable)
 
-# Trips are recorded in thousands
 tourism_agg <- aggregate_key(
-  tsibble::tourism, Purpose * (State / Region), Trips = sum(Trips) * 1e3
+  tsibble::tourism, Purpose * (State / Region), Trips = sum(Trips)
 )
-
-# The structure is inferred from the keys: Purpose * (State / Region)
 app <- graph_explore(tourism_agg)
-plumber2::api_stop(app)
+```
 
-# With forecasts, drawn after the data with their intervals
-tourism_fit <- model(tourism_agg, ets = ETS(Trips), snaive = SNAIVE(Trips))
-tourism_fc <- forecast(tourism_fit, h = "2 years")
+[`graph_explore()`](https://pkg.mitchelloharawild.com/grafts/reference/graph_explore.md)
+opens the explorer in a browser. The data stays in R, which serves each
+series only when it is drawn, so large collections of series open
+quickly. The app runs in the background until it is stopped with:
+
+``` r
+
+plumber2::api_stop(app)
+```
+
+To also explore forecasts, pass a [fable](https://fable.tidyverts.org/)
+of forecasts for those series to `forecasts`. Each model’s forecasts and
+intervals are drawn after the data.
+
+``` r
+
+tourism_fc <- tourism_agg |>
+  model(ets = ETS(Trips), snaive = SNAIVE(Trips)) |>
+  forecast(h = "2 years")
 app <- graph_explore(tourism_agg, forecasts = tourism_fc)
 ```
 
-## The explorer
+## Exploring
 
-[`graph_explore()`](https://pkg.mitchelloharawild.com/grafts/reference/graph_explore.md)
-serves a browser app with
-[plumber2](https://posit-dev.github.io/plumber2/). The app has two
-columns:
+The explorer starts from the total of all series. Its left side shows
+the **series graph**, where each node is a series and its children sum
+to it. Clicking a node lists the ways it can be split, such as by
+`Purpose` or `State`, and choosing one adds those disaggregates to the
+graph. Below it, the **dimension graph** shows the structure of keys and
+highlights where the explorer is.
 
-- **Left:** the series graph, drawn on demand, above the dimension
-  graph, which is headed by the structure (`Purpose * (State / Region)`)
-  with the keys last split by underlined; its edges in use show the path
-  taken. Click a node to choose how to split it (its dimension-graph
-  node’s out-edges). Right-click to collapse it, and shift-click to pin
-  it (pinned nodes carry an orange dot). Drag the background to pan and
-  scroll (or pinch) to zoom; double-click the background or use the
-  corner buttons to reset the view. The **?** button lists these
-  shortcuts. When a series is reached by two paths, it gains a second
-  parent instead of a copy, and its plot a merge icon.
-- **Right:** the focused series, with forecasts when a fable is given.
-  Its header holds the measure and the forecast models, whose chips are
-  the legend and switch each model and the intervals on or off. Below it
-  is a view of a set of series: either the focus’s last chosen children
-  or the pinned series, switched at the front of its header. Each set
-  keeps its own scales and sort. The views are:
-  - **Grid:** small multiples with free, shared or log y, or as shares
-    of the parent (of the total, for pinned series), each with a bar of
-    its share of the parent’s (or total’s) history total.
-  - **Overlay:** values, or indexed to 100 at the first period, on a
-    linear or log axis. Beyond eight series the largest keep a colour
-    and the rest are thin grey lines.
-  - **Stacked** (children only, since pinned series don’t add up to a
-    whole): totals or shares of the parent. The largest children sit
-    nearest zero, negative values go below it, and children beyond the
-    eighth colour merge into one “Other” band. Totals carry on with the
-    first shown model’s forecasts, so you can check that they add up to
-    the parent’s.
-  - **Season:** season plots with free or shared y; the focused series’
-    own before it is split.
-
-  Notes join the legend: the parent’s dashed line and the forecasts when
-  stacked, and a chip of how many values a log axis leaves out (those at
-  or below zero), whose tooltips explain them. Each view’s scale options
-  sit beside its tab, and the views that don’t stack can sort the series
-  by key, size or growth (the last cycle’s mean over the one before).
-  Pin a series with 📌 on its plot (or shift-click its node), or pin all
-  the children at once; pinning while the children are drawn flashes the
-  Pinned count. Click a plot to focus its series. Hovering a node
-  highlights its time plot wherever it is drawn, or shows a sparkline of
-  it beside the node when it isn’t drawn.
-
-Every pane can be resized by dragging the splitters (double-click a
-splitter to reset it). The theme follows the system’s light or dark
-setting, or a toggle fixes it to either; the data palettes lighten on
-dark panes. Pane sizes, view settings and the theme are remembered in
-the browser. The series graph’s header has buttons to reset the layout
-and switch the theme.
-
-## What comes from the tsibble
-
-- **Structure:** the key columns’ `<aggregated>` patterns are the key
-  combinations given to
-  [`aggregate_key()`](https://fabletools.tidyverts.org/reference/aggregate_key.html).
-  They are the dimension graph’s nodes, and its edges each fix the
-  fewest more keys, so any structure works. When the combinations cross
-  chains of nested keys, as `Purpose * (State / Region)` does, those
-  chains colour and lay out the graph.
-- **Measures:** every numeric measured variable can be chosen in the
-  app.
-- **Time:** the index’s own format labels the axis (`1998 Q1`). Its
-  seasonal period
-  ([`fabletools::common_periods()`](https://fabletools.tidyverts.org/reference/freq_tools.html))
-  gives the season plot and the yearly axis ticks. Implicit gaps break
-  the lines.
-- **Forecasts:** a fable’s response, distribution and `.model` give each
-  model’s mean and `level` intervals, matched to series by key.
-
-## Requirements
-
-[plumber2](https://posit-dev.github.io/plumber2/) needs the system
-library libsodium (`sudo apt install libsodium-dev` on Debian/Ubuntu).
+The right side plots the series being explored above its disaggregates,
+which can be shown as small multiples, overlaid, stacked (to see what
+each contributes to the total) or as seasonal plots. Clicking a time
+plot focuses that series, and hovering a node highlights its series
+wherever it is plotted. Right-clicking a node collapses its children,
+and shift-clicking pins it so series from different parts of the graph
+can be compared side by side.
