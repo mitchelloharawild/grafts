@@ -8,8 +8,7 @@ Description: Interactive exploration of graph-temporal data, such as
     hierarchical and grouped time series, and their forecasts. The series
     graph and the graph of key combinations are drawn in a browser app,
     beside plots of the series reached and their forecasts from a fable.
-License: `use_mit_license()`, `use_gpl3_license()` or friends to pick a
-    license
+License: MIT + file LICENSE
 Encoding: UTF-8
 Language: en-GB
 Roxygen: list(markdown = TRUE)
