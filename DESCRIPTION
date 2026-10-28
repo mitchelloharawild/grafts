@@ -13,3 +13,18 @@ Encoding: UTF-8
 Language: en-GB
 Roxygen: list(markdown = TRUE)
 RoxygenNote: 8.0.0
+Imports: 
+    cli,
+    fabletools,
+    httpuv,
+    jsonlite,
+    lubridate,
+    plumber2,
+    purrr,
+    rlang,
+    stats,
+    tsibble,
+    utils,
+    vctrs
+Depends: 
+    R (>= 4.1.0)
