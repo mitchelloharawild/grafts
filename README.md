@@ -1,7 +1,7 @@
 
 <!-- README.md is generated from README.Rmd. Please edit that file -->
 
-# grafts
+# grafts <a href="https://pkg.mitchelloharawild.com/grafts/"><img src="man/figures/logo.svg" align="right" height="139" alt="grafts website" /></a>
 
 <!-- badges: start -->
 
