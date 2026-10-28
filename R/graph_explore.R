@@ -77,6 +77,7 @@ graph_explore <- function(data, value = NULL, forecasts = NULL,
 }
 
 # NA stays NA, so missing values and absent spec fields reach JavaScript as null
-json_serializer <- list("application/json" = function(x) {
+to_json <- function(x) {
   as.character(jsonlite::toJSON(x, auto_unbox = TRUE, null = "null", na = "null", digits = NA))
-})
+}
+json_serializer <- list("application/json" = to_json)

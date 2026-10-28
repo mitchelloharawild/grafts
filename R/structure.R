@@ -53,11 +53,11 @@ dimension_graph <- function(combos, fixed, keys, chains) {
     x <- if (length(chains) == 1) rep(0, m) else drop(lv %*% seq(-1, 1, length.out = length(chains)))
     name <- map_chr(seq_len(m), function(i) {
       parts <- compact(map2(chains, lv[i, ], \(v, l) if (l) paste(v[seq_len(l)], collapse = " / ")))
-      if (length(parts)) paste(parts, collapse = " × ") else "Total"
+      if (length(parts)) paste(parts, collapse = " \u00d7 ") else "Total"
     })
   } else {
     x <- ave(seq_len(m), y, FUN = \(i) seq_along(i) - (length(i) + 1) / 2)
-    name <- map_chr(seq_len(m), \(i) if (any(combos[i, ])) paste(keys[combos[i, ]], collapse = " × ") else "Total")
+    name <- map_chr(seq_len(m), \(i) if (any(combos[i, ])) paste(keys[combos[i, ]], collapse = " \u00d7 ") else "Total")
   }
   nodes <- map(seq_len(m), \(i) list(keys = I(keys[combos[i, ]]), name = name[[i]], n = n[[i]], x = x[[i]], y = y[[i]]))
   edges <- map(seq_len(nrow(cover)), function(r) {
