@@ -1,21 +1,21 @@
 # Logical rows of fixed keys as strings, for matching
-pattern <- function(m) apply(m, 1, \(r) paste(as.integer(r), collapse = ""))
+pattern <- function(m) apply(m, 1, function(r) paste(as.integer(r), collapse = ""))
 
 # The chains of nested keys that the combinations cross, e.g.
 # Purpose * (State / Region) -> list("Purpose", c("State", "Region")), or NULL
 # when they aren't a product of chains, as for (State / Region) + Purpose or
 # State:Purpose. b is nested in a when every combination fixing b fixes a.
 combo_chains <- function(combos, keys) {
-  req <- map(set_names(keys), \(k) keys[apply(combos[combos[, k], , drop = FALSE], 2, all)])
+  req <- map(set_names(keys), function(k) keys[apply(combos[combos[, k], , drop = FALSE], 2, all)])
   chains <- list()
   for (k in keys[order(lengths(req))]) {
     up <- setdiff(req[[k]], k)
-    i <- detect_index(chains, \(v) setequal(v, up))
+    i <- detect_index(chains, function(v) setequal(v, up))
     if (!length(up)) chains <- c(chains, list(k))
     else if (i) chains[[i]] <- c(chains[[i]], k)
     else return(NULL)
   }
-  lv <- expand.grid(map(chains, \(v) 0:length(v)))
+  lv <- expand.grid(map(chains, function(v) 0:length(v)))
   crossed <- map_chr(seq_len(nrow(lv)), function(i) {
     paste(as.integer(keys %in% unlist(map2(chains, unlist(lv[i, ]), head))), collapse = "")
   })
@@ -23,13 +23,13 @@ combo_chains <- function(combos, keys) {
 }
 
 chains_text <- function(chains) {
-  parts <- map_chr(chains, \(v) if (length(v) > 1) paste(v, collapse = " / ") else v)
+  parts <- map_chr(chains, function(v) if (length(v) > 1) paste(v, collapse = " / ") else v)
   if (length(parts) > 1) parts <- ifelse(lengths(chains) > 1, paste0("(", parts, ")"), parts)
   paste(parts, collapse = " * ")
 }
 # Combinations that aren't chains, as aggregate_key() terms, e.g. State + State:Region + Purpose
 combos_text <- function(combos, keys) {
-  terms <- map_chr(seq_len(nrow(combos)), \(i) paste(keys[combos[i, ]], collapse = ":"))
+  terms <- map_chr(seq_len(nrow(combos)), function(i) paste(keys[combos[i, ]], collapse = ":"))
   paste(terms[nzchar(terms)], collapse = " + ")
 }
 
@@ -49,17 +49,17 @@ dimension_graph <- function(combos, fixed, keys, chains) {
   y <- integer(m)
   for (j in seq_len(m)) y[j] <- max(c(0L, y[cover[cover[, 2] == j, 1]] + 1L))
   if (!is.null(chains)) {
-    lv <- do.call(cbind, map(chains, \(v) rowSums(combos[, v, drop = FALSE])))
+    lv <- do.call(cbind, map(chains, function(v) rowSums(combos[, v, drop = FALSE])))
     x <- if (length(chains) == 1) rep(0, m) else drop(lv %*% seq(-1, 1, length.out = length(chains)))
     name <- map_chr(seq_len(m), function(i) {
-      parts <- compact(map2(chains, lv[i, ], \(v, l) if (l) paste(v[seq_len(l)], collapse = " / ")))
+      parts <- compact(map2(chains, lv[i, ], function(v, l) if (l) paste(v[seq_len(l)], collapse = " / ")))
       if (length(parts)) paste(parts, collapse = " \u00d7 ") else "Total"
     })
   } else {
-    x <- ave(seq_len(m), y, FUN = \(i) seq_along(i) - (length(i) + 1) / 2)
-    name <- map_chr(seq_len(m), \(i) if (any(combos[i, ])) paste(keys[combos[i, ]], collapse = " \u00d7 ") else "Total")
+    x <- ave(seq_len(m), y, FUN = function(i) seq_along(i) - (length(i) + 1) / 2)
+    name <- map_chr(seq_len(m), function(i) if (any(combos[i, ])) paste(keys[combos[i, ]], collapse = " \u00d7 ") else "Total")
   }
-  nodes <- map(seq_len(m), \(i) list(keys = I(keys[combos[i, ]]), name = name[[i]], n = n[[i]], x = x[[i]], y = y[[i]]))
+  nodes <- map(seq_len(m), function(i) list(keys = I(keys[combos[i, ]]), name = name[[i]], n = n[[i]], x = x[[i]], y = y[[i]]))
   edges <- map(seq_len(nrow(cover)), function(r) {
     i <- cover[r, 1]; j <- cover[r, 2]
     list(from = i - 1L, to = j - 1L, vars = I(keys[combos[j, ] & !combos[i, ]]))

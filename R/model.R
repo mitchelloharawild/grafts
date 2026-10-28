@@ -2,7 +2,7 @@
 explore_model <- function(data, value, forecasts, level, max_points) {
   if (!tsibble::is_tsibble(data)) abort("`data` must be a tsibble.")
   keys <- tsibble::key_vars(data)
-  plain <- keys[!map_lgl(keys, \(k) inherits(data[[k]], "agg_vec"))]
+  plain <- keys[!map_lgl(keys, function(k) inherits(data[[k]], "agg_vec"))]
   if (length(keys) == 0 || length(plain)) {
     abort(c(
       "Every key of `data` must be aggregated.",
@@ -10,7 +10,7 @@ explore_model <- function(data, value, forecasts, level, max_points) {
       if (length(plain)) x = paste("Not aggregated:", paste(plain, collapse = ", "))
     ))
   }
-  measures <- keep(tsibble::measured_vars(data), \(v) is.numeric(data[[v]]))
+  measures <- keep(tsibble::measured_vars(data), function(v) is.numeric(data[[v]]))
   if (!length(measures)) abort("`data` has no numeric measured variables.")
   measure <- if (quo_is_null(value)) measures[[1]] else as_name(value)
   if (!measure %in% measures) abort("`value` must be a numeric measured variable of `data`.")
@@ -43,7 +43,7 @@ explore_model <- function(data, value, forecasts, level, max_points) {
   if (!is.null(fc)) {
     series <- vctrs::vec_match(fc$keys, s)
     # Each series' forecast rows, by model
-    fc$rows <- map(split(seq_along(series), factor(series, seq_len(nrow(s)))), \(r) split(r, fc$model[r]))
+    fc$rows <- map(split(seq_along(series), factor(series, seq_len(nrow(s)))), function(r) split(r, fc$model[r]))
     fc$x <- vctrs::vec_match(fc$times, grid) - 1L
   }
 
@@ -57,7 +57,7 @@ explore_model <- function(data, value, forecasts, level, max_points) {
     history = history,
     season = season_info(grid, data),
     dims = dimension_graph(combos, fixed, keys, chains),
-    series = map(seq_len(nrow(s)), \(i) unname(as.list(s[i, keys]))),
+    series = map(seq_len(nrow(s)), function(i) unname(as.list(s[i, keys]))),
     forecast = if (!is.null(fc)) list(measure = fc$measure, models = I(fc$models), level = I(level))
   )
   list(spec = spec, n = nrow(s), values = values, fc = fc, max_points = max_points)
@@ -76,7 +76,7 @@ explore_series <- function(model, measure, ids, raw = FALSE) {
     if (!is.null(fc) && identical(fc$measure, measure)) {
       s$fc <- map(fc$rows[[i]], function(r) list(
         x = fc$x[r], mean = signif(fc$mean[r], 6),
-        lo = map(fc$lo, \(q) signif(q[r], 6)), hi = map(fc$hi, \(q) signif(q[r], 6))
+        lo = map(fc$lo, function(q) signif(q[r], 6)), hi = map(fc$hi, function(q) signif(q[r], 6))
       ))
     }
     s
@@ -102,8 +102,8 @@ forecast_model <- function(forecasts, keys, measures, level) {
     models = unique(if (".model" %in% names(tb)) as.character(tb$.model) else "forecast"),
     times = tb[[tsibble::index_var(forecasts)]],
     mean = mean(d),
-    lo = map(level, \(l) unname(quantile(d, (1 - l / 100) / 2))),
-    hi = map(level, \(l) unname(quantile(d, 1 - (1 - l / 100) / 2)))
+    lo = map(level, function(l) unname(quantile(d, (1 - l / 100) / 2))),
+    hi = map(level, function(l) unname(quantile(d, 1 - (1 - l / 100) / 2)))
   )
 }
 

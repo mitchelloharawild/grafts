@@ -12,8 +12,6 @@ License: MIT + file LICENSE
 URL: https://pkg.mitchelloharawild.com/grafts/,
     https://github.com/mitchelloharawild/grafts
 BugReports: https://github.com/mitchelloharawild/grafts/issues
-Depends: 
-    R (>= 4.1.0)
 Imports: 
     cli,
     fabletools,

@@ -52,17 +52,17 @@ of its children or of the pinned series.
 \examples{
 if (interactive()) {
   library(fable)
-  tourism_agg <- tsibble::tourism |>
-    aggregate_key(Purpose * (State / Region), Trips = sum(Trips))
+  tourism_agg <- aggregate_key(
+    tsibble::tourism, Purpose * (State / Region), Trips = sum(Trips)
+  )
 
   # The structure is inferred from the keys: Purpose * (State / Region)
   app <- graph_explore(tourism_agg)
   plumber2::api_stop(app)
 
   # With forecasts, drawn after the data with their intervals
-  tourism_fc <- tourism_agg |>
-    model(ets = ETS(Trips), snaive = SNAIVE(Trips)) |>
-    forecast(h = "2 years")
+  tourism_fit <- model(tourism_agg, ets = ETS(Trips), snaive = SNAIVE(Trips))
+  tourism_fc <- forecast(tourism_fit, h = "2 years")
   app <- graph_explore(tourism_agg, forecasts = tourism_fc)
   plumber2::api_stop(app)
 }
