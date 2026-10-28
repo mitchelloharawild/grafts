@@ -8,6 +8,15 @@
 \description{
 Interactive exploration of graph-temporal data, such as hierarchical and grouped time series, and their forecasts. The series graph and the graph of key combinations are drawn in a browser app, beside plots of the series reached and their forecasts from a fable.
 }
+\seealso{
+Useful links:
+\itemize{
+  \item \url{https://pkg.mitchelloharawild.com/grafts/}
+  \item \url{https://github.com/mitchelloharawild/grafts}
+  \item Report bugs at \url{https://github.com/mitchelloharawild/grafts/issues}
+}
+
+}
 \author{
 \strong{Maintainer}: Mitchell O'Hara-Wild \email{mail@mitchelloharawild.com} (\href{https://orcid.org/0000-0001-6729-7695}{ORCID})
 
