@@ -1,0 +1,16 @@
+url: https://pkg.mitchelloharawild.com/grafts/
+template:
+  bootstrap: 5
+
+development:
+  mode: auto
+
+authors:
+  Mitchell O'Hara-Wild:
+    href: https://mitchelloharawild.com
+
+reference:
+- title: "Exploration"
+  desc: "Interactive exploration of aggregated time series and their forecasts"
+  contents:
+  - graph_explore
