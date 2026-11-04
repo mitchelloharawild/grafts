@@ -108,3 +108,21 @@ Several explorers can share one api by giving each a `path`, such as
 `api_graph_explore(api, tourism_agg, path = "/tourism/")`. Open the app
 at the trailing slash (`/tourism/`), as it fetches its data with
 relative urls.
+
+## Embedding
+
+Small collections of series can be explored without R, on a static web
+page such as a pkgdown site, a blog or GitHub Pages. `graph_save()`
+writes the explorer and every series into a single HTML file, and
+`graph_widget()` embeds it in R Markdown, Quarto or Shiny, where a page
+can hold several explorers.
+
+``` r
+graph_save(tourism_agg, "tourism.html", forecasts = tourism_fc)
+graph_widget(tourism_agg, height = 600)
+```
+
+Every series is written into the page, so large collections are better
+served by `graph_explore()`. Embedded explorers use the system’s UI
+font, unless the page loads [Source Sans
+3](https://fonts.google.com/specimen/Source+Sans+3) as the app does.

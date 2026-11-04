@@ -2,6 +2,10 @@
 
 export(api_graph_explore)
 export(graph_explore)
+export(graph_save)
+export(graph_widget)
+export(graph_widgetOutput)
+export(renderGraph_widget)
 importFrom(purrr,
   compact,
   detect_index,
