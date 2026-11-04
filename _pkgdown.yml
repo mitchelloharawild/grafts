@@ -13,11 +13,11 @@ reference:
 - title: "Exploration"
   desc: "Interactive exploration of aggregated time series and their forecasts"
   contents:
-  - graph_explore
-  - graph_options
+  - grafts_explore
+  - grafts_options
 - title: "Embedding"
   desc: "The explorer on static web pages, with no R process behind it"
   contents:
-  - graph_save
-  - graph_widget
-  - graph_widget-shiny
+  - grafts_save
+  - grafts
+  - grafts-shiny

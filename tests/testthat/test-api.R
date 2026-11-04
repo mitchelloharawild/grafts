@@ -7,7 +7,7 @@ hit <- function(api, url) {
 }
 
 test_that("spec and series are served with cache headers", {
-  api <- api_graph_explore(plumber2::api(doc_type = NULL), agg)
+  api <- api_grafts(plumber2::api(doc_type = NULL), agg)
   res <- hit(api, "/api/spec")
   expect_equal(res$status, 200L)
   expect_match(res$headers[["cache-control"]], "max-age")
@@ -19,7 +19,7 @@ test_that("spec and series are served with cache headers", {
 })
 
 test_that("invalid requests are 400", {
-  api <- api_graph_explore(plumber2::api(doc_type = NULL), agg, max_ids = 2)
+  api <- api_grafts(plumber2::api(doc_type = NULL), agg, max_ids = 2)
   expect_equal(hit(api, "/api/series?ids=0,1,2")$status, 400L)
   expect_equal(hit(api, "/api/series?ids=0,1")$status, 200L)
   expect_equal(hit(api, "/api/series?measure=nope&ids=0")$status, 400L)
@@ -29,8 +29,8 @@ test_that("invalid requests are 400", {
 
 test_that("explorers mount at sub-paths", {
   api <- plumber2::api(doc_type = NULL) |>
-    api_graph_explore(agg, path = "tourism") |>
-    api_graph_explore(agg, path = "/retail/")
+    api_grafts(agg, path = "tourism") |>
+    api_grafts(agg, path = "/retail/")
   expect_equal(hit(api, "/tourism/api/spec")$status, 200L)
   expect_equal(hit(api, "/retail/api/series?ids=0")$status, 200L)
   expect_equal(hit(api, "/api/spec")$status, 404L)
@@ -50,7 +50,7 @@ test_that("static files are served under a sub-path", {
     small <- tsibble::tsibble(t = 1:4, k = "a", y = 1:4, index = t, key = k)
     agg <- fabletools::aggregate_key(small, k, y = sum(y))
     plumber2::api(port = port, doc_type = NULL) |>
-      api_graph_explore(agg, path = "/tourism/") |>
+      api_grafts(agg, path = "/tourism/") |>
       plumber2::api_run(block = TRUE, showcase = FALSE, silent = TRUE)
   }, list(pkg = testthat::test_path("../.."), port = port))
   withr::defer(bg$kill())

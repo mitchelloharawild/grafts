@@ -1,5 +1,5 @@
 # Everything the server needs, computed once
-explore_model <- function(data, value, forecasts, level, max_points, options = graph_options()) {
+explore_model <- function(data, value, forecasts, level, max_points, options = grafts_options()) {
   if (!tsibble::is_tsibble(data)) abort("`data` must be a tsibble.")
   keys <- tsibble::key_vars(data)
   plain <- keys[!map_lgl(keys, function(k) inherits(data[[k]], "agg_vec"))]

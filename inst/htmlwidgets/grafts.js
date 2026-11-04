@@ -1,7 +1,7 @@
-// graph_widget(): an explorer of the inline payload written by R. Rendering
+// grafts(): an explorer of the inline payload written by R. Rendering
 // again (as Shiny does) replaces the explorer drawn before.
 HTMLWidgets.widget({
-  name: 'graph_widget',
+  name: 'grafts',
   type: 'output',
   factory: function (el) {
     var drawn = null;

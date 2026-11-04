@@ -1,4 +1,4 @@
-# graph_explore() serves a browser app with plumber2. The left column holds the
+# grafts_explore() serves a browser app with plumber2. The left column holds the
 # series graph (one node per series, drawn on demand) above the dimension graph
 # (one node per combination of keys). The right column plots the series the
 # explorer has reached, with forecasts when a fable is given.
@@ -15,8 +15,8 @@
 #' plots the focused series, with forecasts when a fable is given, above a view
 #' of its children or of the pinned series.
 #'
-#' `graph_explore()` starts a local server for the console. To deploy the app,
-#' add it to a plumber2 api with `api_graph_explore()`, which adds the routes
+#' `grafts_explore()` starts a local server for the console. To deploy the app,
+#' add it to a plumber2 api with `api_grafts()`, which adds the routes
 #' `{path}api/spec` and `{path}api/series` and the app's static files. The page
 #' uses relative urls, so open it at the trailing slash (`/tourism/`).
 #' plumber2 also serves the page at `/tourism`, but there its api calls
@@ -33,14 +33,14 @@
 #'   and maximum of blocks of time, about `max_points` values, so spikes stay
 #'   visible. The season and stacked plots always get the full series.
 #' @param options Which views the explorer offers and how it starts, from
-#'   [graph_options()].
+#'   [grafts_options()].
 #' @param port,host Where the app is served. Use `host = "0.0.0.0"` to accept
 #'   connections from other machines, such as from a container.
 #' @param launch Open the app in a browser.
 #' @param block Block the R session while serving. When `FALSE`, stop the app
 #'   with `plumber2::api_stop()` on the returned api.
-#' @return `graph_explore()` returns the plumber2 api, invisibly.
-#'   `api_graph_explore()` returns `api` with the explorer added.
+#' @return `grafts_explore()` returns the plumber2 api, invisibly.
+#'   `api_grafts()` returns `api` with the explorer added.
 #' @examples
 #' if (interactive()) {
 #'   library(fable)
@@ -49,23 +49,23 @@
 #'   )
 #'
 #'   # The structure is inferred from the keys: Purpose * (State / Region)
-#'   app <- graph_explore(tourism_agg)
+#'   app <- grafts_explore(tourism_agg)
 #'   plumber2::api_stop(app)
 #'
 #'   # With forecasts, drawn after the data with their intervals
 #'   tourism_fit <- model(tourism_agg, ets = ETS(Trips), snaive = SNAIVE(Trips))
 #'   tourism_fc <- forecast(tourism_fit, h = "2 years")
-#'   app <- graph_explore(tourism_agg, forecasts = tourism_fc)
+#'   app <- grafts_explore(tourism_agg, forecasts = tourism_fc)
 #'   plumber2::api_stop(app)
 #' }
 #' @export
-graph_explore <- function(data, value = NULL, forecasts = NULL,
-                          level = c(80, 95), max_points = 1000,
-                          options = graph_options(), port = httpuv::randomPort(), host = "127.0.0.1",
-                          launch = interactive(), block = !interactive()) {
+grafts_explore <- function(data, value = NULL, forecasts = NULL,
+                           level = c(80, 95), max_points = 1000,
+                           options = grafts_options(), port = httpuv::randomPort(), host = "127.0.0.1",
+                           launch = interactive(), block = !interactive()) {
   value <- enquo(value)
   api <- plumber2::api(host = host, port = port, doc_type = NULL)
-  api <- api_graph_explore(api, data, !!value, forecasts, level, max_points, options)
+  api <- api_grafts(api, data, !!value, forecasts, level, max_points, options)
 
   # Announce before running, as a blocking server only returns once stopped
   open_host <- if (host %in% c("0.0.0.0", "::")) "127.0.0.1" else host
@@ -78,7 +78,7 @@ graph_explore <- function(data, value = NULL, forecasts = NULL,
   invisible(api)
 }
 
-#' @rdname graph_explore
+#' @rdname grafts_explore
 #' @param api A plumber2 api, such as from `plumber2::api()`.
 #' @param path Where the explorer is mounted on `api`. Mount several explorers
 #'   at different paths, such as `"/tourism/"` and `"/retail/"`.
@@ -89,22 +89,22 @@ graph_explore <- function(data, value = NULL, forecasts = NULL,
 #' #* @plumber
 #' function(api) {
 #'   data <- readRDS("tourism_agg.rds")
-#'   api_graph_explore(api, data)
+#'   api_grafts(api, data)
 #' }
 #'
 #' # In Docker, from the command line
 #' # Rscript -e 'readRDS("tourism_agg.rds") |>
-#' #   grafts::graph_explore(host = "0.0.0.0", port = 8000, launch = FALSE)'
+#' #   grafts::grafts_explore(host = "0.0.0.0", port = 8000, launch = FALSE)'
 #'
 #' # Several datasets on one api, at /tourism/ and /retail/
 #' plumber2::api() |>
-#'   api_graph_explore(tourism_agg, path = "/tourism/") |>
-#'   api_graph_explore(retail_agg, path = "/retail/") |>
+#'   api_grafts(tourism_agg, path = "/tourism/") |>
+#'   api_grafts(retail_agg, path = "/retail/") |>
 #'   plumber2::api_run()
 #' @export
-api_graph_explore <- function(api, data, value = NULL, forecasts = NULL,
-                              level = c(80, 95), max_points = 1000,
-                              options = graph_options(), path = "/", max_ids = 1000) {
+api_grafts <- function(api, data, value = NULL, forecasts = NULL,
+                       level = c(80, 95), max_points = 1000,
+                       options = grafts_options(), path = "/", max_ids = 1000) {
   value <- enquo(value)
   model <- explore_model(data, value, forecasts, level, max_points, options)
   path <- paste0("/", gsub("^/+|/+$", "", path), "/")

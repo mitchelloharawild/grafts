@@ -2,7 +2,6 @@
 % Please edit documentation in R/grafts-package.R
 \docType{package}
 \name{grafts-package}
-\alias{grafts}
 \alias{grafts-package}
 \title{grafts: Graph Forecasts for Time Series}
 \description{

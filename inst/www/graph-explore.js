@@ -2,9 +2,9 @@
 // time, with time plots of everything reached.
 //
 // GraphExplore.mount(element, opts) draws an explorer in an element, getting
-// the structure and series from a source: remote(), the api of graph_explore()
-// in graph_explore.R (api/spec, and api/series on request), or inline(), a
-// payload of every series from graph_save() or graph_widget() in static.R.
+// the structure and series from a source: remote(), the api of grafts_explore()
+// in explore.R (api/spec, and api/series on request), or inline(), a
+// payload of every series from grafts_save() or grafts() in static.R.
 // Explorers keep their state, theme and listeners to themselves, so a page can
 // hold several.
 //
@@ -76,12 +76,15 @@
   // Left margin of a compact plot, room for its y labels
   var YLAB = 34;
   var TABS = [['grid', 'Grid'], ['overlay', 'Overlay'], ['stacked', 'Stacked'], ['season', 'Season']];
-  // The R-side options (graph_options()) of a spec, with the defaults of specs
+  // The R-side options (grafts_options()) of a spec, with the defaults of specs
   // from before there were any. Drops views the data can't support.
   function readOptions(spec) {
     var o = spec.options || {}, views = o.views || ['grid', 'overlay', 'stacked', 'season'];
-    var additive = o.additive !== false, tabs = TABS.filter(function (t) {
-      return views.indexOf(t[0]) > -1 && (additive || t[0] !== 'stacked') && (spec.season || t[0] !== 'season');
+    // Tabs in the order of views, the first being shown at the start
+    var additive = o.additive !== false, tabs = [];
+    views.forEach(function (v) {
+      var t = TABS.filter(function (t) { return t[0] === v; })[0];
+      if (t && tabs.indexOf(t) < 0 && (additive || v !== 'stacked') && (spec.season || v !== 'season')) tabs.push(t);
     });
     if (!tabs.length) tabs = [TABS[0]];
     var scales = {};
@@ -91,8 +94,7 @@
         if (SCALES[set][t[0]]) scales[set][t[0]] = SCALES[set][t[0]].filter(function (x) { return additive || x[0] !== 'parent'; });
       });
     });
-    var view = tabs.some(function (t) { return t[0] === o.view; }) ? o.view : tabs[0][0];
-    return { tabs: tabs, scales: scales, view: view, theme: o.theme || 'system', remember: o.remember !== false };
+    return { tabs: tabs, scales: scales, view: tabs[0][0], theme: o.theme || 'system', persist: o.persist !== false };
   }
   // Y scale options of each view tab for each set of series, the first being
   // the default. Pinned series don't add up to a whole, so they don't stack.
@@ -270,7 +272,7 @@
     this.themeKey = THEME + ':' + storageKey;
     this.storeKey = STORE + ':' + storageKey;
     var o = this.options = readOptions(spec);
-    this.theme = (o.remember && (load(this.themeKey) || load(THEME))) || o.theme;
+    this.theme = (o.persist && (load(this.themeKey) || load(THEME))) || o.theme;
     applyTheme(root, this.theme);
     this.P = readPalette(root);
     // Without chains, each key is its own
@@ -304,7 +306,7 @@
     (this.fc ? this.fc.models : []).forEach(function (m) { models[m] = true; });
     // Each set of series keeps its own scales, sort and overlay axis
     this.ui = { measure: spec.measure, tab: o.view, set: 'children', sets: {}, models: models, intervals: true, cell: 210 };
-    var saved = (o.remember && (load(this.storeKey) || load(STORE))) || {}, su = saved.ui || {}, sc = su.scales || {};
+    var saved = (o.persist && (load(this.storeKey) || load(STORE))) || {}, su = saved.ui || {}, sc = su.scales || {};
     ['tab', 'set', 'intervals', 'cell'].forEach(function (k) { if (su[k] != null) self.ui[k] = su[k]; });
     if (!o.tabs.some(function (t) { return t[0] === self.ui.tab; })) this.ui.tab = o.view;
     if (!SCALES[this.ui.set]) this.ui.set = 'children';
@@ -365,7 +367,7 @@
   };
   Explorer.prototype.setTheme = function (t) {
     this.theme = t;
-    if (this.options.remember) save(this.themeKey, t);
+    if (this.options.persist) save(this.themeKey, t);
     this.restyle();
   };
   Explorer.prototype.restyle = function () {
@@ -887,7 +889,7 @@
   };
   Explorer.prototype.persist = function () {
     var ui = this.ui;
-    if (this.options.remember) save(this.storeKey, { size: this.size, ui: { tab: ui.tab, set: ui.set, sets: ui.sets, intervals: ui.intervals, cell: ui.cell } });
+    if (this.options.persist) save(this.storeKey, { size: this.size, ui: { tab: ui.tab, set: ui.set, sets: ui.sets, intervals: ui.intervals, cell: ui.cell } });
   };
   Explorer.prototype.toggleHelp = function (on) {
     this.helpOpen = on == null ? !this.helpOpen : on;
@@ -1735,7 +1737,7 @@
   function getJSON(url) {
     return fetch(url).then(function (r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); });
   }
-  // The api of graph_explore() at `base`, by default relative to the page
+  // The api of grafts_explore() at `base`, by default relative to the page
   function remote(base) {
     base = base || '';
     if (base && base.charAt(base.length - 1) !== '/') base += '/';
@@ -1747,7 +1749,7 @@
     };
   }
   // A payload {spec, series: {measure: {id: data}}} of full series, from
-  // graph_save() or graph_widget(): an object, its JSON, or a promise of
+  // grafts_save() or grafts(): an object, its JSON, or a promise of
   // either. Full series answer reduced requests too.
   function inline(payload) {
     var p = Promise.resolve(payload).then(function (x) { return typeof x === 'string' ? JSON.parse(x) : x; });

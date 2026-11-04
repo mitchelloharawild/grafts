@@ -44,10 +44,10 @@ library(fable)
 tourism_agg <- aggregate_key(
   tsibble::tourism, Purpose * (State / Region), Trips = sum(Trips)
 )
-app <- graph_explore(tourism_agg)
+app <- grafts_explore(tourism_agg)
 ```
 
-`graph_explore()` opens the explorer in a browser. The data stays in R,
+`grafts_explore()` opens the explorer in a browser. The data stays in R,
 which serves each series only when it is drawn, so large collections of
 series open quickly. The app runs in the background until it is stopped
 with:
@@ -64,7 +64,7 @@ intervals are drawn after the data.
 tourism_fc <- tourism_agg |>
   model(ets = ETS(Trips), snaive = SNAIVE(Trips)) |>
   forecast(h = "2 years")
-app <- graph_explore(tourism_agg, forecasts = tourism_fc)
+app <- grafts_explore(tourism_agg, forecasts = tourism_fc)
 ```
 
 ## Exploring
@@ -86,14 +86,14 @@ can be compared side by side.
 
 ## Deploying
 
-`graph_explore()` is for the console. To serve the explorer from a
-server, add it to a plumber2 api with `api_graph_explore()`. In a
-plumber2 file, such as for Posit Connect:
+`grafts_explore()` is for the console. To serve the explorer from a
+server, add it to a plumber2 api with `api_grafts()`. In a plumber2
+file, such as for Posit Connect:
 
 ``` r
 #* @plumber
 function(api) {
-  api_graph_explore(api, readRDS("tourism_agg.rds"))
+  api_grafts(api, readRDS("tourism_agg.rds"))
 }
 ```
 
@@ -101,39 +101,38 @@ In Docker, listen on all interfaces:
 
 ``` r
 readRDS("tourism_agg.rds") |>
-  graph_explore(host = "0.0.0.0", port = 8000, launch = FALSE)
+  grafts_explore(host = "0.0.0.0", port = 8000, launch = FALSE)
 ```
 
 Several explorers can share one api by giving each a `path`, such as
-`api_graph_explore(api, tourism_agg, path = "/tourism/")`. Open the app
-at the trailing slash (`/tourism/`), as it fetches its data with
-relative urls.
+`api_grafts(api, tourism_agg, path = "/tourism/")`. Open the app at the
+trailing slash (`/tourism/`), as it fetches its data with relative urls.
 
 ## Embedding
 
 Small collections of series can be explored without R, on a static web
-page such as a pkgdown site, a blog or GitHub Pages. `graph_save()`
+page such as a pkgdown site, a blog or GitHub Pages. `grafts_save()`
 writes the explorer and every series into a single HTML file, and
-`graph_widget()` embeds it in R Markdown, Quarto or Shiny, where a page
-can hold several explorers.
+`grafts()` embeds it in R Markdown, Quarto or Shiny, where a page can
+hold several explorers.
 
 ``` r
-graph_save(tourism_agg, "tourism.html", forecasts = tourism_fc)
-graph_widget(tourism_agg, height = 600)
+grafts_save(tourism_agg, "tourism.html", forecasts = tourism_fc)
+grafts(tourism_agg, height = 600)
 ```
 
-`graph_options()` chooses the views offered, the starting view and
-theme, and whether visitors’ choices are remembered, for every way of
-serving the explorer. Whether series add up to their parents is
-detected, hiding the Stacked view and share scales for means.
+`grafts_options()` chooses the views offered, the starting view and
+theme, and whether visitors’ choices persist, for every way of serving
+the explorer. Whether series add up to their parents is detected, hiding
+the Stacked view and share scales for means.
 
 ``` r
-graph_widget(tourism_agg, options = graph_options(
-  views = c("grid", "season"), theme = "dark", remember = FALSE
+grafts(tourism_agg, options = grafts_options(
+  views = c("grid", "season"), theme = "dark", persist = FALSE
 ))
 ```
 
 Every series is written into the page, so large collections are better
-served by `graph_explore()`. Embedded explorers use the system’s UI
+served by `grafts_explore()`. Embedded explorers use the system’s UI
 font, unless the page loads [Source Sans
 3](https://fonts.google.com/specimen/Source+Sans+3) as the app does.

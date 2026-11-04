@@ -1,22 +1,22 @@
-# graph_save() and graph_widget() embed the explorer of graph_explore() in a
+# grafts_save() and grafts() embed the explorer of grafts_explore() in a
 # static page, with no R process behind it. Every series is sent at once, at
 # full length, as the inline payload {spec, series: {measure: {id: data}}}
 # that GraphExplore.inline() in inst/www/graph-explore.js reads. Suited to
-# small data; graph_explore() serves large data a series at a time.
+# small data; grafts_explore() serves large data a series at a time.
 
 #' Save the explorer as a static web page
 #'
-#' Writes the explorer of [graph_explore()] to an HTML file that needs no R
+#' Writes the explorer of [grafts_explore()] to an HTML file that needs no R
 #' session, for sharing or publishing on a static site (such as GitHub Pages
 #' or a pkgdown site). Every series, and its forecasts, is written into the
-#' page, so it suits small data: for large data use [graph_explore()], which
+#' page, so it suits small data: for large data use [grafts_explore()], which
 #' serves each series only when it is drawn.
 #'
-#' The page uses the system's UI font. The standalone app of [graph_explore()]
+#' The page uses the system's UI font. The standalone app of [grafts_explore()]
 #' loads Source Sans 3 from Google Fonts, which a page can load too, for the
 #' same look.
 #'
-#' @inheritParams graph_explore
+#' @inheritParams grafts_explore
 #' @param file The HTML file to write.
 #' @param selfcontained Write a single file holding the explorer's script,
 #'   styles and data. When `FALSE`, `file` loads `graph-explore.js`,
@@ -25,17 +25,17 @@
 #' @param height Height of the explorer, in pixels or as a CSS length. By
 #'   default it fills the window.
 #' @return `file`, invisibly.
-#' @seealso [graph_widget()] to embed the explorer in R Markdown, Quarto or
+#' @seealso [grafts()] to embed the explorer in R Markdown, Quarto or
 #'   Shiny.
 #' @examples
 #' tourism_agg <- fabletools::aggregate_key(
 #'   tsibble::tourism, Purpose * (State / Region), Trips = sum(Trips)
 #' )
-#' file <- graph_save(tourism_agg, tempfile(fileext = ".html"))
+#' file <- grafts_save(tourism_agg, tempfile(fileext = ".html"))
 #' if (interactive()) utils::browseURL(file)
 #' @export
-graph_save <- function(data, file, value = NULL, forecasts = NULL,
-                       level = c(80, 95), options = graph_options(), selfcontained = TRUE, height = NULL) {
+grafts_save <- function(data, file, value = NULL, forecasts = NULL,
+                        level = c(80, 95), options = grafts_options(), selfcontained = TRUE, height = NULL) {
   model <- explore_model(data, enquo(value), forecasts, level, Inf, options)
   json <- explore_payload(model)
   check_payload_size(json)
@@ -82,37 +82,37 @@ graph_save <- function(data, file, value = NULL, forecasts = NULL,
 
 #' An htmlwidget of the explorer
 #'
-#' Embeds the explorer of [graph_explore()] in R Markdown, Quarto, pkgdown or
+#' Embeds the explorer of [grafts_explore()] in R Markdown, Quarto, pkgdown or
 #' Shiny, with no R process behind it. Every series, and its forecasts, is
 #' written into the page, so it suits small data: for large data use
-#' [graph_explore()], which serves each series only when it is drawn. A page
+#' [grafts_explore()], which serves each series only when it is drawn. A page
 #' can hold several explorers.
 #'
 #' The widget uses the system's UI font. The standalone app of
-#' [graph_explore()] loads Source Sans 3 from Google Fonts, which a page can
+#' [grafts_explore()] loads Source Sans 3 from Google Fonts, which a page can
 #' load too, for the same look.
 #'
-#' @inheritParams graph_explore
+#' @inheritParams grafts_explore
 #' @param width,height Size of the widget, in pixels or as a CSS length. The
 #'   height defaults to 600px.
 #' @param elementId An id for the widget's element.
 #' @return An htmlwidget.
-#' @seealso [graph_save()] to write a standalone page.
+#' @seealso [grafts_save()] to write a standalone page.
 #' @examples
 #' tourism_agg <- fabletools::aggregate_key(
 #'   tsibble::tourism, Purpose * (State / Region), Trips = sum(Trips)
 #' )
-#' graph_widget(tourism_agg)
+#' grafts(tourism_agg)
 #' @export
-graph_widget <- function(data, value = NULL, forecasts = NULL, level = c(80, 95), options = graph_options(),
-                         width = NULL, height = NULL, elementId = NULL) {
+grafts <- function(data, value = NULL, forecasts = NULL, level = c(80, 95), options = grafts_options(),
+                   width = NULL, height = NULL, elementId = NULL) {
   model <- explore_model(data, enquo(value), forecasts, level, Inf, options)
   json <- explore_payload(model)
   check_payload_size(json)
   # The payload is already JSON, which htmlwidgets writes as it is
   x <- list(payload = structure(json, class = "json"))
   htmlwidgets::createWidget(
-    "graph_widget", x, width = width, height = height, package = "grafts",
+    "grafts", x, width = width, height = height, package = "grafts",
     elementId = elementId, dependencies = graph_dependency(),
     sizingPolicy = htmlwidgets::sizingPolicy(
       defaultWidth = "100%", defaultHeight = 600, padding = 0,
@@ -121,24 +121,24 @@ graph_widget <- function(data, value = NULL, forecasts = NULL, level = c(80, 95)
   )
 }
 
-#' Shiny bindings for graph_widget()
+#' Shiny bindings for grafts()
 #'
 #' @param outputId Output variable to read from.
 #' @param width,height A CSS length for the widget.
-#' @param expr An expression that returns a [graph_widget()].
+#' @param expr An expression that returns a [grafts()].
 #' @param env The environment in which to evaluate `expr`.
 #' @param quoted Is `expr` a quoted expression (with `quote()`)?
-#' @name graph_widget-shiny
+#' @name grafts-shiny
 #' @export
-graph_widgetOutput <- function(outputId, width = "100%", height = "600px") {
-  htmlwidgets::shinyWidgetOutput(outputId, "graph_widget", width, height, package = "grafts")
+graftsOutput <- function(outputId, width = "100%", height = "600px") {
+  htmlwidgets::shinyWidgetOutput(outputId, "grafts", width, height, package = "grafts")
 }
 
-#' @rdname graph_widget-shiny
+#' @rdname grafts-shiny
 #' @export
-renderGraph_widget <- function(expr, env = parent.frame(), quoted = FALSE) {
+renderGrafts <- function(expr, env = parent.frame(), quoted = FALSE) {
   if (!quoted) expr <- substitute(expr)
-  htmlwidgets::shinyRenderWidget(expr, graph_widgetOutput, env, quoted = TRUE)
+  htmlwidgets::shinyRenderWidget(expr, graftsOutput, env, quoted = TRUE)
 }
 
 # The structure and every full series of every measure, as JSON that can sit
@@ -164,7 +164,7 @@ check_payload_size <- function(json, max = 5e6) {
   if (size > max) {
     cli::cli_warn(c(
       "The explorer's data take {prettyNum(round(size / 1e6, 1))} MB, which is slow to load in a page.",
-      i = "{.fn graph_explore} serves large data a series at a time."
+      i = "{.fn grafts_explore} serves large data a series at a time."
     ))
   }
 }

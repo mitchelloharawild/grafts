@@ -29,14 +29,14 @@ test_that("JSON can't close the script holding it", {
   expect_equal(jsonlite::fromJSON(escape_json('{"a":"</script>"}'))$a, "</script>")
 })
 
-test_that("graph_save() writes a page holding the payload", {
+test_that("grafts_save() writes a page holding the payload", {
   # A key that would close the page's <script> if written as it is
   odd <- as.data.frame(small)
   odd$Purpose <- paste0("</script>", odd$Purpose)
   odd <- tsibble::as_tsibble(odd, index = Quarter, key = c(State, Region, Purpose))
   agg <- fabletools::aggregate_key(odd, Purpose * (State / Region), y = sum(y), z = mean(y))
   file <- tempfile(fileext = ".html")
-  expect_identical(graph_save(agg, file, height = 500), file)
+  expect_identical(grafts_save(agg, file, height = 500), file)
   html <- paste(readLines(file), collapse = "\n")
   json <- sub('.*<script type="application/json" id="gx-data">(.*?)</script>.*', "\\1", html)
   expect_false(grepl("</script", json, fixed = TRUE))
@@ -48,10 +48,10 @@ test_that("graph_save() writes a page holding the payload", {
   expect_false(grepl("fonts.googleapis", html, fixed = TRUE))
 })
 
-test_that("graph_save() can write its script, styles and data beside the page", {
+test_that("grafts_save() can write its script, styles and data beside the page", {
   dir <- tempfile()
   dir.create(dir)
-  graph_save(small_agg(), file.path(dir, "index.html"), selfcontained = FALSE)
+  grafts_save(small_agg(), file.path(dir, "index.html"), selfcontained = FALSE)
   expect_setequal(list.files(dir), c("index.html", "graph-explore.js", "graph-explore.css", "data.json"))
   p <- jsonlite::fromJSON(file.path(dir, "data.json"), simplifyVector = FALSE)
   expect_named(p, c("spec", "series"))
@@ -59,9 +59,9 @@ test_that("graph_save() can write its script, styles and data beside the page", 
   expect_match(html, "fetch('data.json')", fixed = TRUE)
 })
 
-test_that("graph_widget() embeds the payload as JSON", {
-  w <- graph_widget(small_agg(), value = z)
-  expect_s3_class(w, "graph_widget")
+test_that("grafts() embeds the payload as JSON", {
+  w <- grafts(small_agg(), value = z)
+  expect_s3_class(w, "grafts")
   p <- jsonlite::fromJSON(unclass(w$x$payload), simplifyVector = FALSE)
   expect_equal(p$spec$measure, "z")
   file <- tempfile(fileext = ".html")
@@ -71,6 +71,6 @@ test_that("graph_widget() embeds the payload as JSON", {
 })
 
 test_that("large payloads warn", {
-  expect_warning(check_payload_size(strrep("x", 11), max = 10), "graph_explore")
+  expect_warning(check_payload_size(strrep("x", 11), max = 10), "grafts_explore")
   expect_no_warning(check_payload_size(strrep("x", 10), max = 10))
 })

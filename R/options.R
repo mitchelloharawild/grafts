@@ -1,8 +1,8 @@
 #' Options for the explorer
 #'
 #' Chooses which views the explorer offers and how it starts, for
-#' [graph_explore()], [api_graph_explore()], [graph_save()] and
-#' [graph_widget()].
+#' [grafts_explore()], [api_grafts()], [grafts_save()] and
+#' [grafts()].
 #'
 #' The Stacked view and the grid's share-of-parent scale only make sense when
 #' each series is the sum of the series it splits into. With `additive = NULL`
@@ -11,8 +11,7 @@
 #' aggregates lose those options automatically.
 #'
 #' @param views The view tabs offered, in order: any of `"grid"`, `"overlay"`,
-#'   `"stacked"` and `"season"`.
-#' @param view The tab shown first. Defaults to the first of `views`.
+#'   `"stacked"` and `"season"`. The first is shown at the start.
 #' @param additive Whether each series is the sum of its children. `NULL`
 #'   detects it. When not additive, the Stacked view and the share scales are
 #'   removed.
@@ -22,29 +21,29 @@
 #'   `"week"` for daily data.
 #' @param theme The theme at first, for visitors who haven't chosen one:
 #'   `"system"` follows their device.
-#' @param remember Whether the explorer saves the visitor's choices (tab,
+#' @param persist Whether the explorer saves the visitor's choices (tab,
 #'   scales, layout and theme) in their browser. Use `FALSE` for a fixed
 #'   starting view, such as in documentation. When `TRUE`, saved choices that
-#'   the options don't allow fall back to `view` and each tab's default scale.
-#' @return A `graph_options` list, for the `options` argument of
-#'   [graph_explore()] and friends.
+#'   the options don't allow fall back to the first of `views` and each tab's default scale.
+#' @return A `grafts_options` list, for the `options` argument of
+#'   [grafts_explore()] and friends.
 #' @examples
 #' # A grid and season plots only, always starting dark and fresh
-#' graph_options(views = c("grid", "season"), theme = "dark", remember = FALSE)
+#' grafts_options(views = c("grid", "season"), theme = "dark", persist = FALSE)
 #'
 #' # Weekly seasons for daily data, instead of yearly ones
-#' graph_options(season = "week", view = "season")
+#' grafts_options(views = c("season", "grid", "overlay"), season = "week")
 #'
 #' # No Season view, and a mean-aggregated tsibble known to be non-additive
-#' graph_options(season = FALSE, additive = FALSE)
+#' grafts_options(season = FALSE, additive = FALSE)
 #' @export
-graph_options <- function(views = c("grid", "overlay", "stacked", "season"), view = NULL,
-                          additive = NULL, season = NULL, theme = c("system", "light", "dark"),
-                          remember = TRUE) {
+grafts_options <- function(views = c("grid", "overlay", "stacked", "season"),
+                           additive = NULL, season = NULL, theme = c("system", "light", "dark"),
+                           persist = TRUE) {
   explicit <- !missing(views)
   views <- arg_match(views, c("grid", "overlay", "stacked", "season"), multiple = TRUE)
   views <- unique(views)
-  view <- if (is.null(view)) views[[1]] else arg_match(view, views)
+  if (!length(views)) abort("`views` must name at least one view.")
   if (!is.null(additive) && !(is.logical(additive) && length(additive) == 1 && !is.na(additive))) {
     abort("`additive` must be `TRUE`, `FALSE` or `NULL`.")
   }
@@ -52,24 +51,24 @@ graph_options <- function(views = c("grid", "overlay", "stacked", "season"), vie
     abort("`season` must be `NULL`, `FALSE` or the name of a period, such as \"week\".")
   }
   theme <- arg_match(theme)
-  if (!(is.logical(remember) && length(remember) == 1 && !is.na(remember))) abort("`remember` must be `TRUE` or `FALSE`.")
+  if (!(is.logical(persist) && length(persist) == 1 && !is.na(persist))) abort("`persist` must be `TRUE` or `FALSE`.")
   structure(
-    list(views = views, view = view, additive = additive, season = season, theme = theme,
-         remember = remember, explicit_views = explicit),
-    class = "graph_options"
+    list(views = views, additive = additive, season = season, theme = theme,
+         persist = persist, explicit_views = explicit),
+    class = "grafts_options"
   )
 }
 
 #' @export
-print.graph_options <- function(x, ...) {
-  cat("<graph_options> views: ", paste(x$views, collapse = ", "), " (starting at ", x$view, ")\n", sep = "")
+print.grafts_options <- function(x, ...) {
+  cat("<grafts_options> views: ", paste(x$views, collapse = ", "), " (starting at ", x$views[[1]], ")\n", sep = "")
   invisible(x)
 }
 
 # The options as the app reads them (spec$options), settled against the data:
 # additivity detected unless given, and views the data can't support removed
 resolve_options <- function(options, data, values, s, fixed, combos, dims, season) {
-  if (!inherits(options, "graph_options")) abort("`options` must be made by `graph_options()`.")
+  if (!inherits(options, "grafts_options")) abort("`options` must be made by `grafts_options()`.")
   additive <- options$additive %||% is_additive(values, s, fixed, combos, dims$edges)
   views <- options$views
   drop <- character()
@@ -77,13 +76,13 @@ resolve_options <- function(options, data, values, s, fixed, combos, dims, seaso
   if (is.null(season)) drop <- c(drop, "season")
   if (options$explicit_views && !additive && "stacked" %in% views) {
     cli::cli_inform(c(i = "Dropping the Stacked view: the series don't add up to their parents.",
-                      "*" = "Set `additive = TRUE` in {.fn graph_options} to keep it."))
+                      "*" = "Set `additive = TRUE` in {.fn grafts_options} to keep it."))
   }
   views <- setdiff(views, drop)
   if (!length(views)) abort("No views are left to offer.", i = "The data has no seasonal period or isn't additive.")
   list(
-    views = I(views), view = if (options$view %in% views) options$view else views[[1]],
-    additive = additive, season = season$name, theme = options$theme, remember = options$remember
+    views = I(views), additive = additive, season = season$name, theme = options$theme,
+    persist = options$persist
   )
 }
 
