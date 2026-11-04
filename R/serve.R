@@ -9,8 +9,8 @@
 #' the routes `{path}api/spec` and `{path}api/series`, and the app's page at
 #' `{path}`, which `{path}` without its trailing slash redirects to.
 #' `grafts_serve()` runs an explorer on its own server, for scripts and
-#' containers. In the console, printing an explorer from [grafts()] serves it
-#' too.
+#' containers. Printing an explorer from [grafts()] in the console runs
+#' `grafts_serve()`, blocking the console like a Shiny app until it is stopped.
 #'
 #' The data stays in R, and the app is sent each series when it is drawn, so
 #' data of any size can be explored.
@@ -29,7 +29,8 @@
 #'   The app asks for up to 200 at a time.
 #' @param port,host Where the app is served. Use `host = "0.0.0.0"` to accept
 #'   connections from other machines, such as from a container.
-#' @param launch Open the app in a browser.
+#' @param launch Open the app, in the IDE's viewer where there is one, else in
+#'   a browser.
 #' @param block Block the R session while serving. When `FALSE`, stop the app
 #'   with `plumber2::api_stop()` on the returned api.
 #' @return `api_grafts()` returns `api` with the explorer added.
@@ -81,7 +82,7 @@ api_grafts <- function(api, x, ..., path = "/", max_points = 1000, max_ids = 100
   }, serializers = json_serializer)
 
   # The app's files, as routes rather than plumber2 statics, which can't be
-  # added to a running server (as the console's session server is)
+  # added once a server runs
   www <- system.file("www", package = "grafts")
   files <- list(
     list(route = path, file = "index.html", type = "text/html"),
@@ -111,37 +112,31 @@ grafts_serve <- function(x, ..., port = httpuv::randomPort(), host = "127.0.0.1"
                          max_points = 1000, launch = interactive(), block = !interactive()) {
   x <- as_grafts(x, ...)
   api <- plumber2::api(host = host, port = port, doc_type = NULL)
-  api <- api_grafts(api, x, max_points = max_points)
+  # Without routr's note on making its router
+  api <- suppressMessages(api_grafts(api, x, max_points = max_points))
 
   # Announce before running, as a blocking server only returns once stopped
   open_host <- if (host %in% c("0.0.0.0", "::")) "127.0.0.1" else host
+  url <- paste0("http://", open_host, ":", port, "/")
   cli::cli_inform(c(
-    "Exploring {x$model$n} series at {.url http://{open_host}:{port}/}",
+    "Exploring {x$model$n} series at {.url {url}}",
     if (open_host != host) c(i = "Listening on all interfaces ({host})."),
-    if (!block) c(i = "Stop it with {.code plumber2::api_stop(<api>)}")
+    i = if (block) "Press {.kbd Ctrl+C} (or {.kbd Esc} in RStudio and Positron) to stop." else "Stop it with {.code plumber2::api_stop(<api>)}."
   ))
-  plumber2::api_run(api, block = block, showcase = launch, silent = TRUE)
+  # Opened once the server is up, as a blocking run only returns once stopped
+  if (launch) later::later(function() open_url(url))
+  tryCatch(
+    plumber2::api_run(api, block = block, showcase = FALSE, silent = TRUE),
+    # The server stops itself on the way out
+    interrupt = function(e) cli::cli_inform("Stopped exploring.")
+  )
   invisible(api)
 }
 
-# The console's server, started on the first print and shared by the explorers
-# printed after, each at its own path
-the <- new.env(parent = emptyenv())
-
-serve_session <- function(x) {
-  if (!is.null(x$served$url)) return(x$served$url)
-  if (is.null(the$api)) {
-    port <- httpuv::randomPort()
-    the$api <- plumber2::api(host = "127.0.0.1", port = port, doc_type = NULL)
-    the$url <- paste0("http://127.0.0.1:", port, "/")
-    the$n <- 0L
-    plumber2::api_run(the$api, block = FALSE, showcase = FALSE, silent = TRUE)
-  }
-  the$n <- the$n + 1L
-  path <- paste0("/", the$n, "/")
-  the$api <- api_grafts(the$api, x, path = path)
-  x$served$url <- paste0(sub("/$", "", the$url), path)
-  x$served$url
+# The IDE's viewer where there is one, as for a Shiny app, else a browser
+open_url <- function(url) {
+  viewer <- getOption("viewer")
+  if (is.function(viewer)) viewer(url) else utils::browseURL(url)
 }
 
 # NA stays NA, so missing values and absent spec fields reach JavaScript as null

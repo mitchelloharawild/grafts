@@ -50,7 +50,8 @@ grafts(tourism_agg)
 `grafts()` makes an explorer, which opens in the viewer or a browser
 when printed in the console. The data stays in R, which serves each
 series only when it is drawn, so large collections of series open
-quickly.
+quickly. Like a Shiny app, the console waits while the explorer is open:
+press Ctrl+C (or Esc in RStudio and Positron) to stop it.
 
 To also explore forecasts, pass a [fable](https://fable.tidyverts.org/)
 of forecasts for those series to `forecasts`. Each model’s forecasts and

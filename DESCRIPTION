@@ -19,6 +19,7 @@ Imports:
     htmlwidgets,
     httpuv,
     jsonlite,
+    later,
     lubridate,
     plumber2,
     purrr,

@@ -1,7 +1,7 @@
 # grafts() makes an explorer: the checked structure, series and forecasts of
 # an aggregated tsibble. Where the explorer goes decides how its series reach
 # the browser. Printed in the console it is served by a local plumber2 server
-# a series at a time (serve.R). Knitted, in Shiny or saved, every series is
+# a series at a time (serve.R), until stopped. Knitted, in Shiny or saved, every series is
 # written into the page (static.R).
 
 #' Explore an aggregated tsibble through its series and dimension graphs
@@ -16,7 +16,9 @@
 #'
 #' * Printed in the console, it opens in the viewer or a browser, served by a
 #'   local server that sends each series when it is drawn, so data of any size
-#'   can be explored.
+#'   can be explored. Like a Shiny app, the console waits while it is served:
+#'   press Ctrl+C (or Esc in RStudio and Positron) to stop it. Use
+#'   [grafts_serve()] to serve it in the background instead.
 #' * In R Markdown, Quarto, pkgdown or Shiny ([renderGrafts()]), and in a page
 #'   written by [grafts_save()], every series is written into the page, which
 #'   needs no R session. This suits small data.
@@ -39,7 +41,7 @@
 #'   pixels or as a CSS length. In documents and Shiny the height defaults to
 #'   600px, and a page from [grafts_save()] fills the window.
 #' @param elementId An id for the explorer's element in a document.
-#' @return An explorer, of class `grafts_explorer`.
+#' @return An explorer, of class `grafts`.
 #' @examples
 #' tourism_agg <- fabletools::aggregate_key(
 #'   tsibble::tourism, Purpose * (State / Region), Trips = sum(Trips)
@@ -63,16 +65,17 @@ grafts <- function(data, value = NULL, forecasts = NULL, level = c(80, 95),
   model <- explore_model(data, enquo(value), forecasts, level, 1000, options)
   structure(
     list(
-      model = model, width = width, height = height, elementId = elementId,
-      # Shared by copies, so printing an explorer again reuses its url
-      served = new.env(parent = emptyenv())
+      model = model, width = width, height = height, elementId = elementId
     ),
-    class = "grafts_explorer"
+    class = "grafts"
   )
 }
 
+# The explorer's widget shares its class, and goes to the htmlwidget methods
+
 #' @export
-format.grafts_explorer <- function(x, ...) {
+format.grafts <- function(x, ...) {
+  if (inherits(x, "htmlwidget")) return(NextMethod())
   spec <- x$model$spec
   c(
     paste0("<grafts explorer> ", x$model$n, " series of ", spec$structure),
@@ -82,31 +85,31 @@ format.grafts_explorer <- function(x, ...) {
 }
 
 #' @export
-print.grafts_explorer <- function(x, ...) {
-  if (!interactive()) {
+print.grafts <- function(x, ...) {
+  if (inherits(x, "htmlwidget")) return(NextMethod())
+  if (interactive()) {
+    grafts_serve(x, launch = TRUE, block = TRUE)
+  } else {
     writeLines(format(x))
-    return(invisible(x))
   }
-  url <- serve_session(x)
-  cli::cli_inform("Exploring {x$model$n} series at {.url {url}}")
-  viewer <- getOption("viewer")
-  if (is.function(viewer)) viewer(url) else utils::browseURL(url)
   invisible(x)
 }
 
 #' @exportS3Method knitr::knit_print
-knit_print.grafts_explorer <- function(x, ...) {
+knit_print.grafts <- function(x, ...) {
+  if (inherits(x, "htmlwidget")) return(NextMethod())
   knitr::knit_print(as_widget(x), ...)
 }
 
 #' @exportS3Method htmltools::as.tags
-as.tags.grafts_explorer <- function(x, ...) {
+as.tags.grafts <- function(x, ...) {
+  if (inherits(x, "htmlwidget")) return(NextMethod())
   htmltools::as.tags(as_widget(x), ...)
 }
 
 # An explorer from `x`, or from data `x` and the arguments of grafts() in `...`
 as_grafts <- function(x, ..., call = rlang::caller_env()) {
-  if (inherits(x, "grafts_explorer")) {
+  if (inherits(x, "grafts") && !inherits(x, "htmlwidget")) {
     if (...length()) {
       abort("Arguments in `...` only apply when `x` is data, not an explorer from `grafts()`.", call = call)
     }

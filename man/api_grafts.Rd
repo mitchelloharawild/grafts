@@ -39,7 +39,8 @@ The app asks for up to 200 at a time.}
 \item{port, host}{Where the app is served. Use \code{host = "0.0.0.0"} to accept
 connections from other machines, such as from a container.}
 
-\item{launch}{Open the app in a browser.}
+\item{launch}{Open the app, in the IDE's viewer where there is one, else in
+a browser.}
 
 \item{block}{Block the R session while serving. When \code{FALSE}, stop the app
 with \code{plumber2::api_stop()} on the returned api.}
@@ -54,8 +55,8 @@ Docker or Posit Connect, say) or mounting it beside other routes. It adds
 the routes \verb{\{path\}api/spec} and \verb{\{path\}api/series}, and the app's page at
 \code{{path}}, which \code{{path}} without its trailing slash redirects to.
 \code{grafts_serve()} runs an explorer on its own server, for scripts and
-containers. In the console, printing an explorer from \code{\link[=grafts]{grafts()}} serves it
-too.
+containers. Printing an explorer from \code{\link[=grafts]{grafts()}} in the console runs
+\code{grafts_serve()}, blocking the console like a Shiny app until it is stopped.
 }
 \details{
 The data stays in R, and the app is sent each series when it is drawn, so

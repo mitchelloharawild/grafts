@@ -64,21 +64,6 @@ test_that("explorers print a summary outside the console", {
   expect_match(out[[1]], "series of State / Region", fixed = TRUE)
 })
 
-test_that("printed explorers share a session server, each at its own path", {
-  skip_on_cran()
-  withr::defer({
-    if (!is.null(the$api)) plumber2::api_stop(the$api)
-    rm(list = ls(the), envir = the)
-  })
-  x <- grafts(agg)
-  url <- serve_session(x)
-  expect_match(url, "^http://127.0.0.1:[0-9]+/1/$")
-  expect_identical(serve_session(x), url)
-  expect_match(serve_session(grafts(agg)), "/2/$")
-  expect_equal(hit(the$api, "/2/api/spec")$status, 200L)
-  expect_equal(hit(the$api, "/1/")$status, 200L)
-})
-
 test_that("static files are served under a sub-path", {
   skip_on_cran()
   skip_if_not_installed("callr")
@@ -106,4 +91,33 @@ test_that("static files are served under a sub-path", {
   expect_true(ok)
   expect_match(paste(readLines(base, warn = FALSE), collapse = "\n"), "<html", ignore.case = TRUE)
   expect_true(length(readLines(paste0(base, "grafts.js"), warn = FALSE)) > 10)
+})
+
+test_that("grafts_serve() serves until interrupted, then stops", {
+  skip_on_cran()
+  skip_on_os("windows")
+  skip_if_not_installed("callr")
+  skip_if_not_installed("pkgload")
+  port <- httpuv::randomPort()
+  bg <- callr::r_bg(function(pkg, port) {
+    if (file.exists(file.path(pkg, "DESCRIPTION"))) {
+      pkgload::load_all(pkg, quiet = TRUE)
+    } else {
+      library(grafts)
+    }
+    small <- tsibble::tsibble(t = 1:4, k = "a", y = 1:4, index = t, key = k)
+    agg <- fabletools::aggregate_key(small, k, y = sum(y))
+    grafts_serve(agg, port = port, launch = FALSE, block = TRUE)
+    "returned"
+  }, list(pkg = testthat::test_path("../.."), port = port), stderr = "2>&1")
+  withr::defer(bg$kill())
+  url <- paste0("http://127.0.0.1:", port, "/api/spec")
+  up <- function() tryCatch(suppressWarnings(length(readLines(url, warn = FALSE)) > 0), error = function(e) FALSE)
+  for (i in 1:50) if (up()) break else Sys.sleep(0.2)
+  expect_true(up())
+  bg$interrupt()
+  bg$wait(10000)
+  expect_false(bg$is_alive())
+  expect_equal(bg$get_result(), "returned")
+  expect_false(up())
 })

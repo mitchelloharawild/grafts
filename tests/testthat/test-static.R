@@ -71,6 +71,16 @@ test_that("an explorer becomes a widget holding the payload as JSON", {
   expect_match(html, '"payload":{"spec":', fixed = TRUE)
 })
 
+test_that("the explorer and its widget share a class, but not methods", {
+  x <- grafts(small_agg())
+  w <- as_widget(x)
+  expect_s3_class(x, "grafts")
+  expect_s3_class(w, c("grafts", "htmlwidget"), exact = TRUE)
+  expect_identical(as_widget(w), w)
+  expect_match(as.character(htmltools::as.tags(w)), "htmlwidget", fixed = TRUE)
+  expect_error(api_grafts(plumber2::api(doc_type = NULL), w), "tsibble")
+})
+
 test_that("an explorer is knitted and tagged as its widget", {
   x <- grafts(small_agg())
   tags <- htmltools::as.tags(x)

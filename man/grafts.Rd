@@ -37,7 +37,7 @@ pixels or as a CSS length. In documents and Shiny the height defaults to
 \item{elementId}{An id for the explorer's element in a document.}
 }
 \value{
-An explorer, of class \code{grafts_explorer}.
+An explorer, of class \code{grafts}.
 }
 \description{
 Makes an explorer of an aggregated tsibble, drawn in the browser. The left
@@ -51,7 +51,9 @@ Where the explorer goes decides how its series reach the browser:
 \itemize{
 \item Printed in the console, it opens in the viewer or a browser, served by a
 local server that sends each series when it is drawn, so data of any size
-can be explored.
+can be explored. Like a Shiny app, the console waits while it is served:
+press Ctrl+C (or Esc in RStudio and Positron) to stop it. Use
+\code{\link[=grafts_serve]{grafts_serve()}} to serve it in the background instead.
 \item In R Markdown, Quarto, pkgdown or Shiny (\code{\link[=renderGrafts]{renderGrafts()}}), and in a page
 written by \code{\link[=grafts_save]{grafts_save()}}, every series is written into the page, which
 needs no R session. This suits small data.
