@@ -9,6 +9,7 @@ graph_widget(
   value = NULL,
   forecasts = NULL,
   level = c(80, 95),
+  options = graph_options(),
   width = NULL,
   height = NULL,
   elementId = NULL
@@ -25,6 +26,9 @@ optionally \code{.model}). Its response variable must be a measured variable of
 \code{data}. Each model's mean and intervals are drawn after the data.}
 
 \item{level}{Interval levels drawn for \code{forecasts}.}
+
+\item{options}{Which views the explorer offers and how it starts, from
+\code{\link[=graph_options]{graph_options()}}.}
 
 \item{width, height}{Size of the widget, in pixels or as a CSS length. The
 height defaults to 600px.}

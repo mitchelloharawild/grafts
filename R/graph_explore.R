@@ -32,6 +32,8 @@
 #' @param max_points Series more than twice this long are sent as the minimum
 #'   and maximum of blocks of time, about `max_points` values, so spikes stay
 #'   visible. The season and stacked plots always get the full series.
+#' @param options Which views the explorer offers and how it starts, from
+#'   [graph_options()].
 #' @param port,host Where the app is served. Use `host = "0.0.0.0"` to accept
 #'   connections from other machines, such as from a container.
 #' @param launch Open the app in a browser.
@@ -59,11 +61,11 @@
 #' @export
 graph_explore <- function(data, value = NULL, forecasts = NULL,
                           level = c(80, 95), max_points = 1000,
-                          port = httpuv::randomPort(), host = "127.0.0.1",
+                          options = graph_options(), port = httpuv::randomPort(), host = "127.0.0.1",
                           launch = interactive(), block = !interactive()) {
   value <- enquo(value)
   api <- plumber2::api(host = host, port = port, doc_type = NULL)
-  api <- api_graph_explore(api, data, !!value, forecasts, level, max_points)
+  api <- api_graph_explore(api, data, !!value, forecasts, level, max_points, options)
 
   # Announce before running, as a blocking server only returns once stopped
   open_host <- if (host %in% c("0.0.0.0", "::")) "127.0.0.1" else host
@@ -102,9 +104,9 @@ graph_explore <- function(data, value = NULL, forecasts = NULL,
 #' @export
 api_graph_explore <- function(api, data, value = NULL, forecasts = NULL,
                               level = c(80, 95), max_points = 1000,
-                              path = "/", max_ids = 1000) {
+                              options = graph_options(), path = "/", max_ids = 1000) {
   value <- enquo(value)
-  model <- explore_model(data, value, forecasts, level, max_points)
+  model <- explore_model(data, value, forecasts, level, max_points, options)
   path <- paste0("/", gsub("^/+|/+$", "", path), "/")
   path <- sub("^//$", "/", path)
 

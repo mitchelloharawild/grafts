@@ -1,10 +1,18 @@
 # Where each time sits in its seasonal cycle, for season plots. The period is
-# the tsibble's yearly one where it has one (quarters, months, weeks, days).
-season_info <- function(grid, data) {
+# the tsibble's yearly one where it has one (quarters, months, weeks, days),
+# unless `season` names another of its periods.
+season_info <- function(grid, data, season = NULL) {
+  if (isFALSE(season)) return(NULL)
   p <- fabletools::common_periods(data)
   p <- p[p > 1]
+  if (!is.null(season) && !season %in% names(p)) {
+    abort(c(
+      paste0("`season` \"", season, "\" is not a period of `data`."),
+      i = if (length(p)) paste("Available periods:", paste0("\"", names(p), "\"", collapse = ", ")) else "`data` has no seasonal periods."
+    ))
+  }
   if (!length(p)) return(NULL)
-  name <- if ("year" %in% names(p)) "year" else names(p)[[1]]
+  name <- season %||% if ("year" %in% names(p)) "year" else names(p)[[1]]
   d <- tryCatch(as.Date(grid), error = function(e) NULL)
   if (!is.null(d) && name == "year") {
     if (inherits(grid, "yearquarter")) {

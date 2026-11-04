@@ -10,6 +10,7 @@ graph_save(
   value = NULL,
   forecasts = NULL,
   level = c(80, 95),
+  options = graph_options(),
   selfcontained = TRUE,
   height = NULL
 )
@@ -27,6 +28,9 @@ optionally \code{.model}). Its response variable must be a measured variable of
 \code{data}. Each model's mean and intervals are drawn after the data.}
 
 \item{level}{Interval levels drawn for \code{forecasts}.}
+
+\item{options}{Which views the explorer offers and how it starts, from
+\code{\link[=graph_options]{graph_options()}}.}
 
 \item{selfcontained}{Write a single file holding the explorer's script,
 styles and data. When \code{FALSE}, \code{file} loads \code{graph-explore.js},

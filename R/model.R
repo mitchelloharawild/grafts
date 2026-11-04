@@ -1,5 +1,5 @@
 # Everything the server needs, computed once
-explore_model <- function(data, value, forecasts, level, max_points) {
+explore_model <- function(data, value, forecasts, level, max_points, options = graph_options()) {
   if (!tsibble::is_tsibble(data)) abort("`data` must be a tsibble.")
   keys <- tsibble::key_vars(data)
   plain <- keys[!map_lgl(keys, function(k) inherits(data[[k]], "agg_vec"))]
@@ -47,6 +47,10 @@ explore_model <- function(data, value, forecasts, level, max_points) {
     fc$x <- vctrs::vec_match(fc$times, grid) - 1L
   }
 
+  dims <- dimension_graph(combos, fixed, keys, chains)
+  season <- season_info(grid, data, options$season)
+  opts <- resolve_options(options, data, values, s, fixed, combos, dims, season)
+
   spec <- list(
     structure = if (is.null(chains)) combos_text(combos, keys) else chains_text(chains),
     keys = I(keys),
@@ -55,8 +59,9 @@ explore_model <- function(data, value, forecasts, level, max_points) {
     measure = measure,
     times = I(format(grid)),
     history = history,
-    season = season_info(grid, data),
-    dims = dimension_graph(combos, fixed, keys, chains),
+    season = season,
+    dims = dims,
+    options = opts,
     series = map(seq_len(nrow(s)), function(i) unname(as.list(s[i, keys]))),
     forecast = if (!is.null(fc)) list(measure = fc$measure, models = I(fc$models), level = I(level))
   )

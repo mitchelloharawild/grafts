@@ -11,6 +11,7 @@ graph_explore(
   forecasts = NULL,
   level = c(80, 95),
   max_points = 1000,
+  options = graph_options(),
   port = httpuv::randomPort(),
   host = "127.0.0.1",
   launch = interactive(),
@@ -24,6 +25,7 @@ api_graph_explore(
   forecasts = NULL,
   level = c(80, 95),
   max_points = 1000,
+  options = graph_options(),
   path = "/",
   max_ids = 1000
 )
@@ -43,6 +45,9 @@ optionally \code{.model}). Its response variable must be a measured variable of
 \item{max_points}{Series more than twice this long are sent as the minimum
 and maximum of blocks of time, about \code{max_points} values, so spikes stay
 visible. The season and stacked plots always get the full series.}
+
+\item{options}{Which views the explorer offers and how it starts, from
+\code{\link[=graph_options]{graph_options()}}.}
 
 \item{port, host}{Where the app is served. Use \code{host = "0.0.0.0"} to accept
 connections from other machines, such as from a container.}

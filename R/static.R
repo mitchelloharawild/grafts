@@ -35,8 +35,8 @@
 #' if (interactive()) utils::browseURL(file)
 #' @export
 graph_save <- function(data, file, value = NULL, forecasts = NULL,
-                       level = c(80, 95), selfcontained = TRUE, height = NULL) {
-  model <- explore_model(data, enquo(value), forecasts, level, Inf)
+                       level = c(80, 95), options = graph_options(), selfcontained = TRUE, height = NULL) {
+  model <- explore_model(data, enquo(value), forecasts, level, Inf, options)
   json <- explore_payload(model)
   check_payload_size(json)
   www <- system.file("www", package = "grafts")
@@ -104,9 +104,9 @@ graph_save <- function(data, file, value = NULL, forecasts = NULL,
 #' )
 #' graph_widget(tourism_agg)
 #' @export
-graph_widget <- function(data, value = NULL, forecasts = NULL, level = c(80, 95),
+graph_widget <- function(data, value = NULL, forecasts = NULL, level = c(80, 95), options = graph_options(),
                          width = NULL, height = NULL, elementId = NULL) {
-  model <- explore_model(data, enquo(value), forecasts, level, Inf)
+  model <- explore_model(data, enquo(value), forecasts, level, Inf, options)
   json <- explore_payload(model)
   check_payload_size(json)
   # The payload is already JSON, which htmlwidgets writes as it is

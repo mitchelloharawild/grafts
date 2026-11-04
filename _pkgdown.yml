@@ -14,6 +14,7 @@ reference:
   desc: "Interactive exploration of aggregated time series and their forecasts"
   contents:
   - graph_explore
+  - graph_options
 - title: "Embedding"
   desc: "The explorer on static web pages, with no R process behind it"
   contents:

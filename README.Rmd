@@ -124,6 +124,17 @@ graph_save(tourism_agg, "tourism.html", forecasts = tourism_fc)
 graph_widget(tourism_agg, height = 600)
 ```
 
+`graph_options()` chooses the views offered, the starting view and theme, and
+whether visitors' choices are remembered, for every way of serving the explorer.
+Whether series add up to their parents is detected, hiding the Stacked view and
+share scales for means.
+
+```{r options, eval = FALSE}
+graph_widget(tourism_agg, options = graph_options(
+  views = c("grid", "season"), theme = "dark", remember = FALSE
+))
+```
+
 Every series is written into the page, so large collections are better served
 by `graph_explore()`. Embedded explorers use the system's UI font, unless the
 page loads [Source Sans 3](https://fonts.google.com/specimen/Source+Sans+3) as

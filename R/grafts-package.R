@@ -11,6 +11,7 @@
 #' @importFrom purrr map2
 #' @importFrom rlang %||%
 #' @importFrom rlang abort
+#' @importFrom rlang arg_match
 #' @importFrom rlang as_name
 #' @importFrom rlang enquo
 #' @importFrom rlang quo_is_null

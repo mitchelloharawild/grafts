@@ -76,6 +76,24 @@
   // Left margin of a compact plot, room for its y labels
   var YLAB = 34;
   var TABS = [['grid', 'Grid'], ['overlay', 'Overlay'], ['stacked', 'Stacked'], ['season', 'Season']];
+  // The R-side options (graph_options()) of a spec, with the defaults of specs
+  // from before there were any. Drops views the data can't support.
+  function readOptions(spec) {
+    var o = spec.options || {}, views = o.views || ['grid', 'overlay', 'stacked', 'season'];
+    var additive = o.additive !== false, tabs = TABS.filter(function (t) {
+      return views.indexOf(t[0]) > -1 && (additive || t[0] !== 'stacked') && (spec.season || t[0] !== 'season');
+    });
+    if (!tabs.length) tabs = [TABS[0]];
+    var scales = {};
+    Object.keys(SCALES).forEach(function (set) {
+      scales[set] = {};
+      tabs.forEach(function (t) {
+        if (SCALES[set][t[0]]) scales[set][t[0]] = SCALES[set][t[0]].filter(function (x) { return additive || x[0] !== 'parent'; });
+      });
+    });
+    var view = tabs.some(function (t) { return t[0] === o.view; }) ? o.view : tabs[0][0];
+    return { tabs: tabs, scales: scales, view: view, theme: o.theme || 'system', remember: o.remember !== false };
+  }
   // Y scale options of each view tab for each set of series, the first being
   // the default. Pinned series don't add up to a whole, so they don't stack.
   var FREE = [['free', 'Free y'], ['shared', 'Shared y']], OVERLAY = [['values', 'Values'], ['indexed', 'Indexed']];
@@ -251,7 +269,8 @@
     this.keys = spec.keys;
     this.themeKey = THEME + ':' + storageKey;
     this.storeKey = STORE + ':' + storageKey;
-    this.theme = load(this.themeKey) || load(THEME) || 'system';
+    var o = this.options = readOptions(spec);
+    this.theme = (o.remember && (load(this.themeKey) || load(THEME))) || o.theme;
     applyTheme(root, this.theme);
     this.P = readPalette(root);
     // Without chains, each key is its own
@@ -284,25 +303,25 @@
     var models = {};
     (this.fc ? this.fc.models : []).forEach(function (m) { models[m] = true; });
     // Each set of series keeps its own scales, sort and overlay axis
-    this.ui = { measure: spec.measure, tab: 'grid', set: 'children', sets: {}, models: models, intervals: true, cell: 210 };
-    var saved = load(this.storeKey) || load(STORE) || {}, su = saved.ui || {}, sc = su.scales || {};
+    this.ui = { measure: spec.measure, tab: o.view, set: 'children', sets: {}, models: models, intervals: true, cell: 210 };
+    var saved = (o.remember && (load(this.storeKey) || load(STORE))) || {}, su = saved.ui || {}, sc = su.scales || {};
     ['tab', 'set', 'intervals', 'cell'].forEach(function (k) { if (su[k] != null) self.ui[k] = su[k]; });
-    if (this.ui.tab === 'children') this.ui.tab = 'grid';
-    if (!TABS.some(function (t) { return t[0] === self.ui.tab; })) this.ui.tab = 'grid';
+    if (!o.tabs.some(function (t) { return t[0] === self.ui.tab; })) this.ui.tab = o.view;
     if (!SCALES[this.ui.set]) this.ui.set = 'children';
     // Older saves kept the children's settings at the top, and the tray's scale
     var old = {
       children: { scales: { grid: sc.children || su.scale, overlay: sc.overlay, stacked: sc.stacked || su.stack, season: sc.season }, sort: su.sort, overlayLog: su.overlayLog },
       pinned: { scales: { grid: su.trayScale } }
     };
-    Object.keys(SCALES).forEach(function (set) {
-      var mine = su.sets ? su.sets[set] || {} : old[set], o = self.ui.sets[set] = { scales: {}, sort: 'key', overlayLog: false };
-      Object.keys(SCALES[set]).forEach(function (t) {
+    var SC = o.scales;
+    Object.keys(SC).forEach(function (set) {
+      var mine = su.sets ? su.sets[set] || {} : old[set], u = self.ui.sets[set] = { scales: {}, sort: 'key', overlayLog: false };
+      Object.keys(SC[set]).forEach(function (t) {
         var v = (mine.scales || {})[t];
-        o.scales[t] = SCALES[set][t].some(function (x) { return x[0] === v; }) ? v : SCALES[set][t][0][0];
+        u.scales[t] = SC[set][t].some(function (x) { return x[0] === v; }) ? v : SC[set][t][0][0];
       });
-      if (SORTS.some(function (x) { return x[0] === mine.sort; })) o.sort = mine.sort;
-      if (typeof mine.overlayLog === 'boolean') o.overlayLog = mine.overlayLog;
+      if (SORTS.some(function (x) { return x[0] === mine.sort; })) u.sort = mine.sort;
+      if (typeof mine.overlayLog === 'boolean') u.overlayLog = mine.overlayLog;
     });
     this.size = saved.size || null;
     this.build();
@@ -346,7 +365,7 @@
   };
   Explorer.prototype.setTheme = function (t) {
     this.theme = t;
-    save(this.themeKey, t);
+    if (this.options.remember) save(this.themeKey, t);
     this.restyle();
   };
   Explorer.prototype.restyle = function () {
@@ -649,7 +668,7 @@
     });
     var tabs = el('div', 'gx-tabs', vh);
     tabs.setAttribute('role', 'tablist');
-    this.tabBtns = TABS.map(function (t) {
+    this.tabBtns = this.options.tabs.map(function (t) {
       var b = el('button', null, tabs, t[1]);
       b.type = 'button';
       b.setAttribute('role', 'tab');
@@ -661,10 +680,11 @@
     });
     // Each set's and tab's own y scale, shown only on that tab
     this.scaleSegs = {};
-    Object.keys(SCALES).forEach(function (set) {
+    Object.keys(this.options.scales).forEach(function (set) {
+      var SC = self.options.scales[set];
       self.scaleSegs[set] = {};
-      Object.keys(SCALES[set]).forEach(function (t) {
-        self.scaleSegs[set][t] = self.segmented(vh, SCALES[set][t], function () { return self.ui.sets[set].scales[t]; },
+      Object.keys(SC).forEach(function (t) {
+        self.scaleSegs[set][t] = self.segmented(vh, SC[t], function () { return self.ui.sets[set].scales[t]; },
           function (v) { self.ui.sets[set].scales[t] = v; self.persist(); self.renderRight(); }, 'y scale');
       });
     });
@@ -867,7 +887,7 @@
   };
   Explorer.prototype.persist = function () {
     var ui = this.ui;
-    save(this.storeKey, { size: this.size, ui: { tab: ui.tab, set: ui.set, sets: ui.sets, intervals: ui.intervals, cell: ui.cell } });
+    if (this.options.remember) save(this.storeKey, { size: this.size, ui: { tab: ui.tab, set: ui.set, sets: ui.sets, intervals: ui.intervals, cell: ui.cell } });
   };
   Explorer.prototype.toggleHelp = function (on) {
     this.helpOpen = on == null ? !this.helpOpen : on;
@@ -1236,11 +1256,11 @@
     this.setBtns[1].b.title = pins ? '' : 'Nothing pinned';
     this.setBtns.forEach(function (x) { x.b.setAttribute('aria-pressed', String(x.v === set)); });
     this.tabBtns.forEach(function (t) {
-      var off = set === 'pinned' && !SCALES.pinned[t.v];
+      var off = set === 'pinned' && !this.options.scales.pinned[t.v];
       t.b.setAttribute('aria-selected', String(t.v === tab));
       t.b.setAttribute('aria-disabled', String(off));
       t.b.title = off ? 'Pinned series don\'t add up' : '';
-    });
+    }, this);
     Object.keys(this.scaleSegs).forEach(function (s) {
       Object.keys(this.scaleSegs[s]).forEach(function (t) {
         this.scaleSegs[s][t].el.style.display = s === set && t === tab && (t !== 'season' || g) ? '' : 'none';
