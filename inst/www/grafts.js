@@ -2,9 +2,9 @@
 // time, with time plots of everything reached.
 //
 // Grafts.mount(element, opts) draws an explorer in an element, getting
-// the structure and series from a source: remote(), the api of grafts_explore()
-// in explore.R (api/spec, and api/series on request), or inline(), a
-// payload of every series from grafts_save() or grafts() in static.R.
+// the structure and series from a source: remote(), the api of api_grafts()
+// in serve.R (api/spec, and api/series on request), or inline(), a payload
+// of every series written into the page by static.R.
 // Explorers keep their state, theme and listeners to themselves, so a page can
 // hold several.
 //
@@ -1737,7 +1737,7 @@
   function getJSON(url) {
     return fetch(url).then(function (r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); });
   }
-  // The api of grafts_explore() at `base`, by default relative to the page
+  // The api of api_grafts() at `base`, by default relative to the page
   function remote(base) {
     base = base || '';
     if (base && base.charAt(base.length - 1) !== '/') base += '/';
@@ -1749,7 +1749,7 @@
     };
   }
   // A payload {spec, series: {measure: {id: data}}} of full series, from
-  // grafts_save() or grafts(): an object, its JSON, or a promise of
+  // static.R: an object, its JSON, or a promise of
   // either. Full series answer reduced requests too.
   function inline(payload) {
     var p = Promise.resolve(payload).then(function (x) { return typeof x === 'string' ? JSON.parse(x) : x; });

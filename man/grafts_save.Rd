@@ -4,56 +4,31 @@
 \alias{grafts_save}
 \title{Save the explorer as a static web page}
 \usage{
-grafts_save(
-  data,
-  file,
-  value = NULL,
-  forecasts = NULL,
-  level = c(80, 95),
-  options = grafts_options(),
-  selfcontained = TRUE,
-  height = NULL
-)
+grafts_save(x, file, ..., selfcontained = TRUE)
 }
 \arguments{
-\item{data}{An aggregated tsibble, as produced by \code{fabletools::aggregate_key()}.}
+\item{x}{An explorer from \code{\link[=grafts]{grafts()}}, or an aggregated tsibble to make one
+from, with the arguments of \code{\link[=grafts]{grafts()}} given in \code{...}.}
 
 \item{file}{The HTML file to write.}
 
-\item{value}{The measured variable shown first. Every numeric measured
-variable can be chosen in the app. Defaults to the first.}
-
-\item{forecasts}{A fable of forecasts for \code{data}, with the same keys (and
-optionally \code{.model}). Its response variable must be a measured variable of
-\code{data}. Each model's mean and intervals are drawn after the data.}
-
-\item{level}{Interval levels drawn for \code{forecasts}.}
-
-\item{options}{Which views the explorer offers and how it starts, from
-\code{\link[=grafts_options]{grafts_options()}}.}
+\item{...}{Arguments of \code{\link[=grafts]{grafts()}}, such as \code{forecasts} or \code{options}, when
+\code{x} is data.}
 
 \item{selfcontained}{Write a single file holding the explorer's script,
 styles and data. When \code{FALSE}, \code{file} loads \code{grafts.js},
 \code{grafts.css} and \code{data.json} written beside it. Browsers only load
 \code{data.json} when the page is served over http(s), not opened from disk.}
-
-\item{height}{Height of the explorer, in pixels or as a CSS length. By
-default it fills the window.}
 }
 \value{
 \code{file}, invisibly.
 }
 \description{
-Writes the explorer of \code{\link[=grafts_explore]{grafts_explore()}} to an HTML file that needs no R
-session, for sharing or publishing on a static site (such as GitHub Pages
-or a pkgdown site). Every series, and its forecasts, is written into the
-page, so it suits small data: for large data use \code{\link[=grafts_explore]{grafts_explore()}}, which
-serves each series only when it is drawn.
-}
-\details{
-The page uses the system's UI font. The standalone app of \code{\link[=grafts_explore]{grafts_explore()}}
-loads Source Sans 3 from Google Fonts, which a page can load too, for the
-same look.
+Writes an explorer from \code{\link[=grafts]{grafts()}} to an HTML file that needs no R session,
+for sharing or publishing on a static site (such as GitHub Pages or a
+pkgdown site). Every series, and its forecasts, is written into the page,
+so it suits small data: for large data use \code{\link[=api_grafts]{api_grafts()}}, which serves
+each series only when it is drawn.
 }
 \examples{
 tourism_agg <- fabletools::aggregate_key(
@@ -61,8 +36,8 @@ tourism_agg <- fabletools::aggregate_key(
 )
 file <- grafts_save(tourism_agg, tempfile(fileext = ".html"))
 if (interactive()) utils::browseURL(file)
-}
-\seealso{
-\code{\link[=grafts]{grafts()}} to embed the explorer in R Markdown, Quarto or
-Shiny.
+
+# The page's height, rather than the window's
+grafts(tourism_agg, height = 500) |>
+  grafts_save(tempfile(fileext = ".html"))
 }

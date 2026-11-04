@@ -36,6 +36,49 @@ test_that("explorers mount at sub-paths", {
   expect_equal(hit(api, "/api/spec")$status, 404L)
 })
 
+test_that("the app's files are served, and the bare path redirects", {
+  api <- plumber2::api(doc_type = NULL) |> api_grafts(agg, path = "/tourism/")
+  res <- hit(api, "/tourism/")
+  expect_equal(res$status, 200L)
+  expect_match(res$headers[["content-type"]], "text/html")
+  expect_match(res$body, "<html", fixed = TRUE)
+  expect_equal(hit(api, "/tourism/grafts.js")$status, 200L)
+  expect_match(hit(api, "/tourism/grafts.css")$headers[["content-type"]], "text/css")
+  res <- hit(api, "/tourism")
+  expect_true(res$status %in% c(301L, 302L, 307L, 308L))
+  expect_equal(res$headers[["location"]], "/tourism/")
+})
+
+test_that("api_grafts() takes an explorer, and reduces long series", {
+  x <- grafts(agg)
+  api <- api_grafts(plumber2::api(doc_type = NULL), x, max_points = 2)
+  s <- jsonlite::fromJSON(hit(api, "/api/series?ids=0")$body, simplifyVector = FALSE)
+  expect_false(is.null(s[["0"]]$step))
+  # The explorer itself keeps the default
+  expect_equal(x$model$max_points, 1000)
+})
+
+test_that("explorers print a summary outside the console", {
+  out <- capture.output(print(grafts(agg)))
+  expect_match(out[[1]], "<grafts explorer>", fixed = TRUE)
+  expect_match(out[[1]], "series of State / Region", fixed = TRUE)
+})
+
+test_that("printed explorers share a session server, each at its own path", {
+  skip_on_cran()
+  withr::defer({
+    if (!is.null(the$api)) plumber2::api_stop(the$api)
+    rm(list = ls(the), envir = the)
+  })
+  x <- grafts(agg)
+  url <- serve_session(x)
+  expect_match(url, "^http://127.0.0.1:[0-9]+/1/$")
+  expect_identical(serve_session(x), url)
+  expect_match(serve_session(grafts(agg)), "/2/$")
+  expect_equal(hit(the$api, "/2/api/spec")$status, 200L)
+  expect_equal(hit(the$api, "/1/")$status, 200L)
+})
+
 test_that("static files are served under a sub-path", {
   skip_on_cran()
   skip_if_not_installed("callr")

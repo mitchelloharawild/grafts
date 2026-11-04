@@ -35,12 +35,11 @@ the options don't allow fall back to the first of \code{views} and each tab's de
 }
 \value{
 A \code{grafts_options} list, for the \code{options} argument of
-\code{\link[=grafts_explore]{grafts_explore()}} and friends.
+\code{\link[=grafts]{grafts()}}.
 }
 \description{
-Chooses which views the explorer offers and how it starts, for
-\code{\link[=grafts_explore]{grafts_explore()}}, \code{\link[=api_grafts]{api_grafts()}}, \code{\link[=grafts_save]{grafts_save()}} and
-\code{\link[=grafts]{grafts()}}.
+Chooses which views the explorer offers and how it starts, for the
+\code{options} argument of \code{\link[=grafts]{grafts()}}.
 }
 \details{
 The Stacked view and the grid's share-of-parent scale only make sense when

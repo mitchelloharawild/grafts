@@ -13,14 +13,15 @@ renderGrafts(expr, env = parent.frame(), quoted = FALSE)
 \arguments{
 \item{outputId}{Output variable to read from.}
 
-\item{width, height}{A CSS length for the widget.}
+\item{width, height}{A CSS length for the explorer.}
 
-\item{expr}{An expression that returns a \code{\link[=grafts]{grafts()}}.}
+\item{expr}{An expression that returns an explorer from \code{\link[=grafts]{grafts()}}.}
 
 \item{env}{The environment in which to evaluate \code{expr}.}
 
 \item{quoted}{Is \code{expr} a quoted expression (with \code{quote()})?}
 }
 \description{
-Shiny bindings for grafts()
+Shows an explorer from \code{\link[=grafts]{grafts()}} in Shiny, with every series written into
+the page.
 }

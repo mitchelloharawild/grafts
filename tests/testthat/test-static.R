@@ -59,9 +59,10 @@ test_that("grafts_save() can write its script, styles and data beside the page",
   expect_match(html, "fetch('data.json')", fixed = TRUE)
 })
 
-test_that("grafts() embeds the payload as JSON", {
-  w <- grafts(small_agg(), value = z)
-  expect_s3_class(w, "grafts")
+test_that("an explorer becomes a widget holding the payload as JSON", {
+  w <- as_widget(grafts(small_agg(), value = z, height = 400))
+  expect_s3_class(w, "htmlwidget")
+  expect_equal(w$height, 400)
   p <- jsonlite::fromJSON(unclass(w$x$payload), simplifyVector = FALSE)
   expect_equal(p$spec$measure, "z")
   file <- tempfile(fileext = ".html")
@@ -70,7 +71,37 @@ test_that("grafts() embeds the payload as JSON", {
   expect_match(html, '"payload":{"spec":', fixed = TRUE)
 })
 
+test_that("an explorer is knitted and tagged as its widget", {
+  x <- grafts(small_agg())
+  tags <- htmltools::as.tags(x)
+  expect_match(as.character(tags), "htmlwidget", fixed = TRUE)
+  skip_if_not_installed("knitr")
+  withr::local_options(knitr.in.progress = TRUE)
+  old <- knitr::opts_knit$get("rmarkdown.pandoc.to")
+  knitr::opts_knit$set(rmarkdown.pandoc.to = "html")
+  withr::defer(knitr::opts_knit$set(rmarkdown.pandoc.to = old))
+  out <- knitr::knit_print(x)
+  expect_s3_class(out, "knit_asis")
+  expect_true(length(attr(out, "knit_meta")) > 0)
+})
+
+test_that("renderGrafts() takes an explorer", {
+  skip_if_not_installed("shiny")
+  x <- grafts(small_agg())
+  f <- renderGrafts(x)
+  expect_true(is.function(f))
+})
+
+test_that("grafts_save() takes an explorer, or data and grafts() arguments", {
+  file <- tempfile(fileext = ".html")
+  grafts_save(grafts(small_agg(), value = z), file)
+  expect_match(paste(readLines(file), collapse = "\n"), '"measure":"z"', fixed = TRUE)
+  grafts_save(small_agg(), file, value = z)
+  expect_match(paste(readLines(file), collapse = "\n"), '"measure":"z"', fixed = TRUE)
+  expect_error(grafts_save(grafts(small_agg()), file, value = z), "only apply when `x` is data")
+})
+
 test_that("large payloads warn", {
-  expect_warning(check_payload_size(strrep("x", 11), max = 10), "grafts_explore")
+  expect_warning(check_payload_size(strrep("x", 11), max = 10), "api_grafts")
   expect_no_warning(check_payload_size(strrep("x", 10), max = 10))
 })

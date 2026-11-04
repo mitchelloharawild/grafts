@@ -1,8 +1,7 @@
 #' Options for the explorer
 #'
-#' Chooses which views the explorer offers and how it starts, for
-#' [grafts_explore()], [api_grafts()], [grafts_save()] and
-#' [grafts()].
+#' Chooses which views the explorer offers and how it starts, for the
+#' `options` argument of [grafts()].
 #'
 #' The Stacked view and the grid's share-of-parent scale only make sense when
 #' each series is the sum of the series it splits into. With `additive = NULL`
@@ -26,7 +25,7 @@
 #'   starting view, such as in documentation. When `TRUE`, saved choices that
 #'   the options don't allow fall back to the first of `views` and each tab's default scale.
 #' @return A `grafts_options` list, for the `options` argument of
-#'   [grafts_explore()] and friends.
+#'   [grafts()].
 #' @examples
 #' # A grid and season plots only, always starting dark and fresh
 #' grafts_options(views = c("grid", "season"), theme = "dark", persist = FALSE)
