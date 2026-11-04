@@ -1,4 +1,4 @@
-/* Graph explorer (graph-explore.js). Two columns: the series graph above the
+/* The grafts explorer (grafts.js). Two columns: the series graph above the
    dimension graph on the left, time plots on the right. Every pane is sized by
    a CSS variable that the splitters set. Edges take the colour of the
    variable they add, and nodes the colour of their depth.

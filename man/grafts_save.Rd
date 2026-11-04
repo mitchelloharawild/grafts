@@ -33,8 +33,8 @@ optionally \code{.model}). Its response variable must be a measured variable of
 \code{\link[=grafts_options]{grafts_options()}}.}
 
 \item{selfcontained}{Write a single file holding the explorer's script,
-styles and data. When \code{FALSE}, \code{file} loads \code{graph-explore.js},
-\code{graph-explore.css} and \code{data.json} written beside it. Browsers only load
+styles and data. When \code{FALSE}, \code{file} loads \code{grafts.js},
+\code{grafts.css} and \code{data.json} written beside it. Browsers only load
 \code{data.json} when the page is served over http(s), not opened from disk.}
 
 \item{height}{Height of the explorer, in pixels or as a CSS length. By

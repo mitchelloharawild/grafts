@@ -62,5 +62,5 @@ test_that("static files are served under a sub-path", {
   }
   expect_true(ok)
   expect_match(paste(readLines(base, warn = FALSE), collapse = "\n"), "<html", ignore.case = TRUE)
-  expect_true(length(readLines(paste0(base, "graph-explore.js"), warn = FALSE)) > 10)
+  expect_true(length(readLines(paste0(base, "grafts.js"), warn = FALSE)) > 10)
 })

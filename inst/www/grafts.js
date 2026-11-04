@@ -1,7 +1,7 @@
-// Graph explorer: drill down an aggregated tsibble one disaggregation at a
+// The grafts explorer: drill down an aggregated tsibble one disaggregation at a
 // time, with time plots of everything reached.
 //
-// GraphExplore.mount(element, opts) draws an explorer in an element, getting
+// Grafts.mount(element, opts) draws an explorer in an element, getting
 // the structure and series from a source: remote(), the api of grafts_explore()
 // in explore.R (api/spec, and api/series on request), or inline(), a
 // payload of every series from grafts_save() or grafts() in static.R.
@@ -64,7 +64,7 @@
   }
   // Saved theme and layout, each under the explorer's storage key. Saves from
   // before the keys were namespaced are read when there is none.
-  var THEME = 'graph-explore-theme', STORE = 'graph-explore-layout';
+  var THEME = 'grafts-theme', STORE = 'grafts-layout';
   var darkQuery = window.matchMedia ? window.matchMedia('(prefers-color-scheme: dark)') : null;
   function applyTheme(node, t) {
     if (t === 'light' || t === 'dark') node.setAttribute('data-theme', t);
@@ -1792,5 +1792,5 @@
       });
   }
 
-  window.GraphExplore = { mount: mount, remote: remote, inline: inline };
+  window.Grafts = { mount: mount, remote: remote, inline: inline };
 })();

@@ -1,7 +1,7 @@
 # grafts_save() and grafts() embed the explorer of grafts_explore() in a
 # static page, with no R process behind it. Every series is sent at once, at
 # full length, as the inline payload {spec, series: {measure: {id: data}}}
-# that GraphExplore.inline() in inst/www/graph-explore.js reads. Suited to
+# that Grafts.inline() in inst/www/grafts.js reads. Suited to
 # small data; grafts_explore() serves large data a series at a time.
 
 #' Save the explorer as a static web page
@@ -19,8 +19,8 @@
 #' @inheritParams grafts_explore
 #' @param file The HTML file to write.
 #' @param selfcontained Write a single file holding the explorer's script,
-#'   styles and data. When `FALSE`, `file` loads `graph-explore.js`,
-#'   `graph-explore.css` and `data.json` written beside it. Browsers only load
+#'   styles and data. When `FALSE`, `file` loads `grafts.js`,
+#'   `grafts.css` and `data.json` written beside it. Browsers only load
 #'   `data.json` when the page is served over http(s), not opened from disk.
 #' @param height Height of the explorer, in pixels or as a CSS length. By
 #'   default it fills the window.
@@ -53,25 +53,25 @@ grafts_save <- function(data, file, value = NULL, forecasts = NULL,
     )
   }
   mount <- function(source) {
-    c("<script>", paste0("  GraphExplore.mount(document.getElementById('gx'), { source: GraphExplore.inline(", source, ") });"), "</script>")
+    c("<script>", paste0("  Grafts.mount(document.getElementById('gx'), { source: Grafts.inline(", source, ") });"), "</script>")
   }
   if (selfcontained) {
     html <- page(
-      c("<style>", read_text(file.path(www, "graph-explore.css")), "</style>"),
+      c("<style>", read_text(file.path(www, "grafts.css")), "</style>"),
       c(
         paste0("<script type=\"application/json\" id=\"gx-data\">", json, "</script>"),
-        "<script>", escape_script(read_text(file.path(www, "graph-explore.js"))), "</script>",
+        "<script>", escape_script(read_text(file.path(www, "grafts.js"))), "</script>",
         mount("document.getElementById('gx-data').textContent")
       )
     )
   } else {
     dir <- dirname(file)
-    file.copy(file.path(www, c("graph-explore.js", "graph-explore.css")), dir, overwrite = TRUE)
+    file.copy(file.path(www, c("grafts.js", "grafts.css")), dir, overwrite = TRUE)
     write_text(json, file.path(dir, "data.json"))
     html <- page(
-      "<link rel=\"stylesheet\" href=\"graph-explore.css\">",
+      "<link rel=\"stylesheet\" href=\"grafts.css\">",
       c(
-        "<script src=\"graph-explore.js\"></script>",
+        "<script src=\"grafts.js\"></script>",
         mount("fetch('data.json').then(function (r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })")
       )
     )
@@ -113,7 +113,7 @@ grafts <- function(data, value = NULL, forecasts = NULL, level = c(80, 95), opti
   x <- list(payload = structure(json, class = "json"))
   htmlwidgets::createWidget(
     "grafts", x, width = width, height = height, package = "grafts",
-    elementId = elementId, dependencies = graph_dependency(),
+    elementId = elementId, dependencies = grafts_dependency(),
     sizingPolicy = htmlwidgets::sizingPolicy(
       defaultWidth = "100%", defaultHeight = 600, padding = 0,
       browser.fill = TRUE, viewer.fill = TRUE, knitr.figure = FALSE
@@ -151,11 +151,11 @@ explore_payload <- function(model) {
 }
 
 # The explorer's script and styles, from inst/www
-graph_dependency <- function() {
+grafts_dependency <- function() {
   list(htmltools::htmlDependency(
-    "graph-explore", as.character(utils::packageVersion("grafts")),
+    "grafts", as.character(utils::packageVersion("grafts")),
     src = "www", package = "grafts",
-    script = "graph-explore.js", stylesheet = "graph-explore.css", all_files = FALSE
+    script = "grafts.js", stylesheet = "grafts.css", all_files = FALSE
   ))
 }
 

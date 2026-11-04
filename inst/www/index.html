@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Graph explorer</title>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@400;600;700&display=swap">
-<link rel="stylesheet" href="graph-explore.css">
+<link rel="stylesheet" href="grafts.css">
 <style>
   /* The standalone app fills the window */
   html, body { margin: 0; height: 100%; background: #F6F7F9; }
@@ -15,9 +15,9 @@
 </head>
 <body>
 <div id="gx" class="gx"><p class="gx-loading">Loading the series graph…</p></div>
-<script src="graph-explore.js"></script>
+<script src="grafts.js"></script>
 <script>
-  GraphExplore.mount(document.getElementById('gx'), { source: GraphExplore.remote() })
+  Grafts.mount(document.getElementById('gx'), { source: Grafts.remote() })
     .then(function (x) { window.explorer = x; });
 </script>
 </body>

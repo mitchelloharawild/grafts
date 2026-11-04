@@ -13,7 +13,7 @@ HTMLWidgets.widget({
         var box = document.createElement('div');
         box.style.height = '100%';
         el.appendChild(box);
-        drawn = GraphExplore.mount(box, { source: GraphExplore.inline(x.payload), storageKey: x.storageKey });
+        drawn = Grafts.mount(box, { source: Grafts.inline(x.payload), storageKey: x.storageKey });
       },
       // The explorer follows its size itself
       resize: function () {}
