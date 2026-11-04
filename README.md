@@ -83,3 +83,28 @@ plot focuses that series, and hovering a node highlights its series
 wherever it is plotted. Right-clicking a node collapses its children,
 and shift-clicking pins it so series from different parts of the graph
 can be compared side by side.
+
+## Deploying
+
+`graph_explore()` is for the console. To serve the explorer from a
+server, add it to a plumber2 api with `api_graph_explore()`. In a
+plumber2 file, such as for Posit Connect:
+
+``` r
+#* @plumber
+function(api) {
+  api_graph_explore(api, readRDS("tourism_agg.rds"))
+}
+```
+
+In Docker, listen on all interfaces:
+
+``` r
+readRDS("tourism_agg.rds") |>
+  graph_explore(host = "0.0.0.0", port = 8000, launch = FALSE)
+```
+
+Several explorers can share one api by giving each a `path`, such as
+`api_graph_explore(api, tourism_agg, path = "/tourism/")`. Open the app
+at the trailing slash (`/tourism/`), as it fetches its data with
+relative urls.

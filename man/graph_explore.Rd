@@ -2,6 +2,7 @@
 % Please edit documentation in R/graph_explore.R
 \name{graph_explore}
 \alias{graph_explore}
+\alias{api_graph_explore}
 \title{Explore an aggregated tsibble through its series and dimension graphs}
 \usage{
 graph_explore(
@@ -14,6 +15,17 @@ graph_explore(
   host = "127.0.0.1",
   launch = interactive(),
   block = !interactive()
+)
+
+api_graph_explore(
+  api,
+  data,
+  value = NULL,
+  forecasts = NULL,
+  level = c(80, 95),
+  max_points = 1000,
+  path = "/",
+  max_ids = 1000
 )
 }
 \arguments{
@@ -32,15 +44,25 @@ optionally \code{.model}). Its response variable must be a measured variable of
 and maximum of blocks of time, about \code{max_points} values, so spikes stay
 visible. The season and stacked plots always get the full series.}
 
-\item{port, host}{Where the app is served.}
+\item{port, host}{Where the app is served. Use \code{host = "0.0.0.0"} to accept
+connections from other machines, such as from a container.}
 
 \item{launch}{Open the app in a browser.}
 
 \item{block}{Block the R session while serving. When \code{FALSE}, stop the app
 with \code{plumber2::api_stop()} on the returned api.}
+
+\item{api}{A plumber2 api, such as from \code{plumber2::api()}.}
+
+\item{path}{Where the explorer is mounted on \code{api}. Mount several explorers
+at different paths, such as \code{"/tourism/"} and \code{"/retail/"}.}
+
+\item{max_ids}{The most series that one request to \code{api/series} may ask for.
+The app asks for up to 200 at a time.}
 }
 \value{
-The plumber2 api, invisibly.
+\code{graph_explore()} returns the plumber2 api, invisibly.
+\code{api_graph_explore()} returns \code{api} with the explorer added.
 }
 \description{
 Serves a browser app for exploring an aggregated tsibble. The left column
@@ -48,6 +70,14 @@ holds the series graph, drawn on demand, above the dimension graph of the
 key combinations given to \code{\link[fabletools:aggregate_key]{fabletools::aggregate_key()}}. The right column
 plots the focused series, with forecasts when a fable is given, above a view
 of its children or of the pinned series.
+}
+\details{
+\code{graph_explore()} starts a local server for the console. To deploy the app,
+add it to a plumber2 api with \code{api_graph_explore()}, which adds the routes
+\verb{\{path\}api/spec} and \verb{\{path\}api/series} and the app's static files. The page
+uses relative urls, so open it at the trailing slash (\verb{/tourism/}).
+plumber2 also serves the page at \verb{/tourism}, but there its api calls
+resolve against \code{/} and fail, so link to the slash form.
 }
 \examples{
 if (interactive()) {
@@ -66,4 +96,22 @@ if (interactive()) {
   app <- graph_explore(tourism_agg, forecasts = tourism_fc)
   plumber2::api_stop(app)
 }
+\dontshow{if (FALSE) withAutoprint(\{ # examplesIf}
+# A plumber2 file (plumber.R), for Posit Connect or plumber2::api("plumber.R")
+#* @plumber
+function(api) {
+  data <- readRDS("tourism_agg.rds")
+  api_graph_explore(api, data)
+}
+
+# In Docker, from the command line
+# Rscript -e 'readRDS("tourism_agg.rds") |>
+#   grafts::graph_explore(host = "0.0.0.0", port = 8000, launch = FALSE)'
+
+# Several datasets on one api, at /tourism/ and /retail/
+plumber2::api() |>
+  api_graph_explore(tourism_agg, path = "/tourism/") |>
+  api_graph_explore(retail_agg, path = "/retail/") |>
+  plumber2::api_run()
+\dontshow{\}) # examplesIf}
 }

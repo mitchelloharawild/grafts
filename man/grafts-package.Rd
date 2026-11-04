@@ -6,6 +6,8 @@
 \alias{grafts-package}
 \title{grafts: Graph Forecasts for Time Series}
 \description{
+\if{html}{\figure{logo.svg}{options: style='float: right' alt='logo' width='120'}}
+
 Interactive exploration of graph-temporal data, such as hierarchical and grouped time series, and their forecasts. The series graph and the graph of key combinations are drawn in a browser app, beside plots of the series reached and their forecasts from a fable.
 }
 \seealso{
