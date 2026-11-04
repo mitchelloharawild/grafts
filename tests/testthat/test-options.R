@@ -16,6 +16,9 @@ test_that("graph_options validates", {
 test_that("additivity is detected", {
   expect_true(model_of(sum_small)$spec$options$additive)
   expect_false(model_of(mean_small)$spec$options$additive)
+  # Only the Total's split, which fixes no keys of its parent
+  expect_false(model_of(fabletools::aggregate_key(small, State, y = mean(y)))$spec$options$additive)
+  expect_true(model_of(fabletools::aggregate_key(small, State, y = sum(y)))$spec$options$additive)
   expect_true(model_of(sum_small, options = graph_options(additive = TRUE))$spec$options$additive)
   expect_false(model_of(sum_small, options = graph_options(additive = FALSE))$spec$options$additive)
   # Trusted without checking

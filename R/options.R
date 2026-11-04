@@ -99,7 +99,8 @@ is_additive <- function(values, s, fixed, combos, edges, tol = 1e-6) {
     cols <- keys[combos[e$from + 1L, ]]
     par <- which(pat == cpat[e$from + 1L])
     kid <- which(pat == cpat[e$to + 1L])
-    id <- function(r) do.call(paste, c(unname(as.list(s[r, cols, drop = FALSE])), sep = "\r"))
+    # The Total fixes no keys, so every series is its child
+    id <- function(r) if (length(cols)) do.call(paste, c(unname(as.list(s[r, cols, drop = FALSE])), sep = "\r")) else rep("", length(r))
     g <- match(id(kid), id(par))
     ok <- !is.na(g)
     kid <- kid[ok]; g <- g[ok]
