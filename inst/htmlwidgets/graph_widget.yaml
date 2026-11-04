@@ -1,0 +1,3 @@
+# graph-explore.js and graph-explore.css come from inst/www, as the
+# dependency of graph_widget() in R/static.R
+dependencies: []

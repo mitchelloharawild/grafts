@@ -1,11 +1,17 @@
 // Graph explorer: drill down an aggregated tsibble one disaggregation at a
 // time, with time plots of everything reached.
 //
-// graph_explore() in graph-explore.R serves this page, the structure
-// (api/spec) and the series on request (api/series). The left column holds the
-// series graph above the dimension graph; the right column the focused series
-// above a view (grid of small multiples, overlay, stacked or season plots) of
-// either its last chosen children or the pinned series.
+// GraphExplore.mount(element, opts) draws an explorer in an element, getting
+// the structure and series from a source: remote(), the api of graph_explore()
+// in graph_explore.R (api/spec, and api/series on request), or inline(), a
+// payload of every series from graph_save() or graph_widget() in static.R.
+// Explorers keep their state, theme and listeners to themselves, so a page can
+// hold several.
+//
+// The left column holds the series graph above the dimension graph; the right
+// column the focused series above a view (grid of small multiples, overlay,
+// stacked or season plots) of either its last chosen children or the pinned
+// series.
 //
 // Clicking a node opens a menu of its dimension-graph node's out-edges, and
 // choosing one draws that group of children. The dimension graph has one node
@@ -22,22 +28,19 @@
 
   // Depth palette (level_colours), one edge colour per chain of the structure
   // (constraint_colours), forecast models, series within a group, the
-  // children merged into "Other" when there are more than CAT colours, and
-  // the ends of the season plots' gradient. They are CSS tokens of the theme,
-  // read again whenever it changes.
-  var LEVEL, CHAIN, MODEL, CAT, OTHER, INK, SEASON, BAND_OP;
-  function readPalette() {
-    var cs = getComputedStyle(document.documentElement);
+  // children merged into "Other" when there are more than cat colours, and
+  // the ends of the season plots' gradient. They are CSS tokens of the
+  // explorer's theme, read from its container again whenever it changes.
+  function readPalette(node) {
+    var cs = getComputedStyle(node);
     var tok = function (n) { return cs.getPropertyValue('--' + n).trim(); };
     var list = function (n, k) { var out = []; for (var i = 0; i < k; i++) out.push(tok(n + '-' + i)); return out; };
-    LEVEL = list('level', 5);
-    CHAIN = list('chain', 4);
-    MODEL = list('model', 5);
-    CAT = list('cat', 8);
-    OTHER = tok('other');
-    INK = tok('ink');
-    SEASON = [hexRgb(tok('season-old')), hexRgb(tok('season-new'))];
-    BAND_OP = parseFloat(tok('band-op')) || 1;
+    return {
+      level: list('level', 5), chain: list('chain', 4), model: list('model', 5), cat: list('cat', 8),
+      other: tok('other'), ink: tok('ink'),
+      season: [hexRgb(tok('season-old')), hexRgb(tok('season-new'))],
+      bandOp: parseFloat(tok('band-op')) || 1
+    };
   }
   function hexRgb(h) { var n = parseInt(h.replace('#', ''), 16); return [n >> 16 & 255, n >> 8 & 255, n & 255]; }
   // Themes cycle system → light → dark; system follows prefers-color-scheme
@@ -59,18 +62,19 @@
     if (ICONS[name][1]) svgEl('path', svg, { d: ICONS[name][1], fill: 'currentColor' });
     return svg;
   }
-  var THEME = 'graph-explore-theme';
+  // Saved theme and layout, each under the explorer's storage key. Saves from
+  // before the keys were namespaced are read when there is none.
+  var THEME = 'graph-explore-theme', STORE = 'graph-explore-layout';
   var darkQuery = window.matchMedia ? window.matchMedia('(prefers-color-scheme: dark)') : null;
-  function applyTheme(t) {
-    if (t === 'light' || t === 'dark') document.documentElement.setAttribute('data-theme', t);
-    else document.documentElement.removeAttribute('data-theme');
+  function applyTheme(node, t) {
+    if (t === 'light' || t === 'dark') node.setAttribute('data-theme', t);
+    else node.removeAttribute('data-theme');
   }
   var SVGNS = 'http://www.w3.org/2000/svg';
   // Groups wider than this show their first CAP children and a "+k more" chip
   var CAP = 12;
   // Left margin of a compact plot, room for its y labels
   var YLAB = 34;
-  var STORE = 'graph-explore-layout';
   var TABS = [['grid', 'Grid'], ['overlay', 'Overlay'], ['stacked', 'Stacked'], ['season', 'Season']];
   // Y scale options of each view tab for each set of series, the first being
   // the default. Pinned series don't add up to a whole, so they don't stack.
@@ -97,7 +101,6 @@
   }
   function css(e, s) { for (var k in s) e.style[k] = s[k]; return e; }
   function px(x) { return x.toFixed(1) + 'px'; }
-  function level(d) { return LEVEL[Math.min(d, LEVEL.length - 1)]; }
   function clamp(x, lo, hi) { return Math.max(lo, Math.min(hi, x)); }
   function load(key) { try { return JSON.parse(localStorage.getItem(key)); } catch (e) { return null; } }
   function save(key, v) { try { localStorage.setItem(key, JSON.stringify(v)); } catch (e) { /* storage blocked */ } }
@@ -163,11 +166,11 @@
     var m = ds.map(function (d) { return Math.abs(meanOf(d.y)) || 0; });
     return ds.map(function (_, i) { return i; }).sort(function (a, b) { return m[b] - m[a] || a - b; });
   }
-  // The largest `ds` that get their own colour, and the rest to merge. All
-  // keep their own colour when they fit in CAT.
-  function topN(ds) {
-    var order = bySize(ds), cut = ds.length > CAT.length ? CAT.length - 1 : ds.length;
-    return { top: order.slice(0, cut), rest: order.slice(cut), color: function (i, r) { return cut < ds.length ? CAT[r] : CAT[i]; } };
+  // The largest `ds` that get their own colour of `cat`, and the rest to
+  // merge. All keep their own colour when they fit in `cat`.
+  function topN(ds, cat) {
+    var order = bySize(ds), cut = ds.length > cat.length ? cat.length - 1 : ds.length;
+    return { top: order.slice(0, cut), rest: order.slice(cut), color: function (i, r) { return cut < ds.length ? cat[r] : cat[i]; } };
   }
   // A series with f applied to its values and its forecasts'
   function mapValues(d, f) {
@@ -238,18 +241,23 @@
 
   // ---- Explorer ----------------------------------------------------------------
 
-  function Explorer(root, spec) {
+  // An explorer of `spec` in the element `root`, getting series from `source`.
+  // `storageKey` names its saved theme and layout.
+  function Explorer(root, spec, source, storageKey) {
     var self = this;
     this.root = root;
     this.spec = spec;
+    this.source = source;
     this.keys = spec.keys;
-    this.theme = load(THEME) || 'system';
-    applyTheme(this.theme);
-    readPalette();
+    this.themeKey = THEME + ':' + storageKey;
+    this.storeKey = STORE + ':' + storageKey;
+    this.theme = load(this.themeKey) || load(THEME) || 'system';
+    applyTheme(root, this.theme);
+    this.P = readPalette(root);
     // Without chains, each key is its own
     this.chains = spec.chains || this.keys.map(function (k) { return [k]; });
     this.varCol = {};
-    this.chains.forEach(function (vars, i) { vars.forEach(function (v) { self.varCol[v] = CHAIN[i % CHAIN.length]; }); });
+    this.chains.forEach(function (vars, i) { vars.forEach(function (v) { self.varCol[v] = self.P.chain[i % self.P.chain.length]; }); });
     this.series = spec.series.map(function (r, i) {
       var s = { id: i, depth: 0 };
       self.keys.forEach(function (k, j) { s[k] = r[j]; if (r[j] != null) s.depth++; });
@@ -277,7 +285,7 @@
     (this.fc ? this.fc.models : []).forEach(function (m) { models[m] = true; });
     // Each set of series keeps its own scales, sort and overlay axis
     this.ui = { measure: spec.measure, tab: 'grid', set: 'children', sets: {}, models: models, intervals: true, cell: 210 };
-    var saved = load(STORE) || {}, su = saved.ui || {}, sc = su.scales || {};
+    var saved = load(this.storeKey) || load(STORE) || {}, su = saved.ui || {}, sc = su.scales || {};
     ['tab', 'set', 'intervals', 'cell'].forEach(function (k) { if (su[k] != null) self.ui[k] = su[k]; });
     if (this.ui.tab === 'children') this.ui.tab = 'grid';
     if (!TABS.some(function (t) { return t[0] === self.ui.tab; })) this.ui.tab = 'grid';
@@ -326,22 +334,24 @@
     return e.vars.map(function (v) { return c[v]; }).join(' · ');
   };
   Explorer.prototype.dimOf = function (s) { return this.dims[s.dim]; };
+  Explorer.prototype.level = function (d) { var l = this.P.level; return l[Math.min(d, l.length - 1)]; };
+  Explorer.prototype.modelCol = function (i) { var m = this.P.model; return m[i % m.length]; };
   // Colours that come from the theme's palettes, set again when it changes
   Explorer.prototype.recolour = function () {
     var self = this, chains = this.chains;
     this.varCol = {};
-    chains.forEach(function (vars, i) { vars.forEach(function (v) { self.varCol[v] = CHAIN[i % CHAIN.length]; }); });
+    chains.forEach(function (vars, i) { vars.forEach(function (v) { self.varCol[v] = self.P.chain[i % self.P.chain.length]; }); });
     this.spec.dims.edges.forEach(function (e) { e.col = self.varCol[e.vars[0]]; });
-    (this.modelBtns || []).forEach(function (x, i) { x.b.style.color = MODEL[i % MODEL.length]; });
+    (this.modelBtns || []).forEach(function (x, i) { x.b.style.color = self.modelCol(i); });
   };
   Explorer.prototype.setTheme = function (t) {
     this.theme = t;
-    save(THEME, t);
+    save(this.themeKey, t);
     this.restyle();
   };
   Explorer.prototype.restyle = function () {
-    applyTheme(this.theme);
-    readPalette();
+    applyTheme(this.root, this.theme);
+    this.P = readPalette(this.root);
     this.recolour();
     var b = this.themeBtn, th = THEMES.filter(function (x) { return x[0] === this.theme; }, this)[0];
     if (b) { icon(b, th[0]); b.title = th[1]; b.setAttribute('aria-label', th[1]); }
@@ -483,13 +493,15 @@
     var get = function (chunk) {
       var keys = chunk.map(function (id) { return ckey(id, raw); });
       keys.forEach(function (k) { self.pending[k] = true; });
-      fetch('api/series?measure=' + encodeURIComponent(measure) + '&raw=' + (raw ? 1 : 0) + '&ids=' + chunk.join(','))
-        .then(function (r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
+      self.source.series(measure, chunk, raw)
         .then(function (d) {
           keys.forEach(function (k, j) { delete self.pending[k]; self.cache[k] = d[chunk[j]]; });
           self.scheduleRight();
         })
-        .catch(function (err) { self.status('Could not load series: ' + err.message); });
+        .catch(function (err) {
+          keys.forEach(function (k) { delete self.pending[k]; });
+          self.status('Could not load series: ' + err.message);
+        });
     };
     for (var i = 0; i < miss.length; i += 200) get(miss.slice(i, i + 200));
   };
@@ -545,7 +557,8 @@
       var i = THEMES.map(function (x) { return x[0]; }).indexOf(self.theme);
       self.setTheme(THEMES[(i + 1) % THEMES.length][0]);
     });
-    if (darkQuery) darkQuery.addEventListener('change', function () { if (self.theme === 'system') self.restyle(); });
+    var onScheme = function () { if (self.theme === 'system') self.restyle(); };
+    if (darkQuery) this.listen(darkQuery, 'change', onScheme);
     this.graph = el('div', 'gx-pane-body', gp);
     this.layer = el('div', 'gx-layer', this.graph);
     this.world = el('div', 'gx-world', this.layer);
@@ -602,7 +615,7 @@
         var b = el('button', 'gx-model', models);
         b.type = 'button';
         b.title = m + ' forecasts of ' + self.fc.measure;
-        b.style.color = MODEL[i % MODEL.length];
+        b.style.color = self.modelCol(i);
         el('span', 'gx-model-key', b);
         el('span', null, b, m).style.color = 'var(--ink)';
         b.addEventListener('click', function () { self.ui.models[m] = !self.ui.models[m]; self.renderControls(); self.renderRight(); });
@@ -687,8 +700,9 @@
       if (self.helpOpen) self.toggleHelp(false);
       if (self.state.menu != null) { self.state.menu = null; self.renderGraph(); self.renderDims(); }
     });
-    document.addEventListener('keydown', function (ev) {
-      if (ev.key !== 'Escape') return;
+    // Escape closes the menu and help of the explorer in use: holding focus or under the pointer
+    this.listen(document, 'keydown', function (ev) {
+      if (ev.key !== 'Escape' || !(root.contains(document.activeElement) || root.matches(':hover'))) return;
       if (self.helpOpen) self.toggleHelp(false);
       if (self.state.menu != null) { self.state.menu = null; self.renderGraph(); self.renderDims(); }
     });
@@ -704,10 +718,11 @@
     this.toastEl.setAttribute('role', 'status');
 
     var resized = null;
-    new ResizeObserver(function () {
+    this.observer = new ResizeObserver(function () {
       clearTimeout(resized);
       resized = setTimeout(function () { self.applySize(true); self.renderGraph(); self.renderDims(); self.renderRight(); }, 60);
-    }).observe(main);
+    });
+    this.observer.observe(main);
 
     this.restyle();
     this.nodeEls = {};
@@ -715,6 +730,21 @@
     this.moreEls = {};
     this.menuEl = null;
     this.chipHover = null;
+  };
+
+  // Listeners outside the explorer's element, removed by destroy()
+  Explorer.prototype.listen = function (target, type, f) {
+    target.addEventListener(type, f);
+    (this.unlisten = this.unlisten || []).push(function () { target.removeEventListener(type, f); });
+  };
+  // Stop listening and empty the element, so it can be mounted again
+  Explorer.prototype.destroy = function () {
+    (this.unlisten || []).forEach(function (f) { f(); });
+    this.unlisten = [];
+    if (this.observer) this.observer.disconnect();
+    if (this.frame) cancelAnimationFrame(this.frame);
+    clearTimeout(this.toastTimer);
+    this.root.textContent = '';
   };
 
   Explorer.prototype.segmented = function (parent, opts, get, set, label) {
@@ -837,7 +867,7 @@
   };
   Explorer.prototype.persist = function () {
     var ui = this.ui;
-    save(STORE, { size: this.size, ui: { tab: ui.tab, set: ui.set, sets: ui.sets, intervals: ui.intervals, cell: ui.cell } });
+    save(this.storeKey, { size: this.size, ui: { tab: ui.tab, set: ui.set, sets: ui.sets, intervals: ui.intervals, cell: ui.cell } });
   };
   Explorer.prototype.toggleHelp = function (on) {
     this.helpOpen = on == null ? !this.helpOpen : on;
@@ -1045,7 +1075,7 @@
       var e = self.nodeEls[id], p = pos[id];
       css(e.box, { left: px(p.x - 18), top: px(p.y - 18), opacity: 1, transform: 'scale(1)' });
       e.label.textContent = L.labelOf[id];
-      e.dot.style.background = level(byId[id].depth);
+      e.dot.style.background = self.level(byId[id].depth);
       e.box.classList.toggle('gx-tilt', !!L.tilt[byId[id].depth]);
       e.box.classList.toggle('gx-focus', +id === st.focus);
       e.box.classList.toggle('gx-menu-on', +id === st.menu);
@@ -1137,7 +1167,7 @@
     var s = this.series[id], d = this.data(id, false);
     if (d === undefined) this.need([id], false);
     var head = el('div', 'gx-cell-head', peek);
-    css(el('span', 'gx-swatch', head), { background: level(s.depth) });
+    css(el('span', 'gx-swatch', head), { background: this.level(s.depth) });
     el('span', 'gx-cell-label', head, this.fullLabel(s));
     this.timePlot(el('div', 'gx-peek-plot', peek), 200, 64, [{ id: id, d: d }], { fc: true, compact: true, noX: true });
     this.peekAt = this.pos[id];
@@ -1241,7 +1271,7 @@
 
   Explorer.prototype.seriesHead = function (head, s) {
     head.textContent = '';
-    css(el('span', 'gx-swatch', head), { background: level(s.depth) });
+    css(el('span', 'gx-swatch', head), { background: this.level(s.depth) });
     el('span', 'gx-series-label', head, this.fullLabel(s));
   };
 
@@ -1277,10 +1307,10 @@
       models.forEach(function (m) {
         var f = l.d.fc && l.d.fc[m];
         if (!f) return;
-        var col = l.fcColor || MODEL[self.fc.models.indexOf(m) % MODEL.length];
+        var col = l.fcColor || self.modelCol(self.fc.models.indexOf(m));
         if (self.ui.intervals && !o.noBands) {
           levels.forEach(function (_, k) {
-            svgEl('path', gs, { class: 'gx-band', d: areaD(f.x, f.lo[k], f.hi[k], X, Y), fill: col, 'fill-opacity': BAND_OP * (0.12 + 0.12 * (levels.length - 1 - k)) });
+            svgEl('path', gs, { class: 'gx-band', d: areaD(f.x, f.lo[k], f.hi[k], X, Y), fill: col, 'fill-opacity': self.P.bandOp * (0.12 + 0.12 * (levels.length - 1 - k)) });
           });
         }
         svgEl('path', gs, { class: 'gx-fc', d: pathD(f.x, f.mean, X, Y), stroke: col, 'stroke-dasharray': l.fcColor ? '4 2' : null });
@@ -1413,7 +1443,7 @@
       c.setAttribute('data-sid', id);
       c.addEventListener('click', function (ev) { if (!ev.target.closest('.gx-pin')) self.focusOn(id); });
       var chd = el('div', 'gx-cell-head', c);
-      css(el('span', 'gx-swatch', chd), { background: level(k.depth) });
+      css(el('span', 'gx-swatch', chd), { background: self.level(k.depth) });
       var label = el('button', 'gx-cell-label', chd, self.memberLabel(id, g));
       label.type = 'button';
       label.title = self.fullLabel(k);
@@ -1484,11 +1514,11 @@
     var indexed = this.opts().scales.overlay === 'indexed';
     // Colours follow the split order, or size, so they stay put when the children are sorted
     var base = g.base.kids, raw = base.map(function (id) { return self.data(id, indexed); }), col = {};
-    var loaded = raw.every(function (d) { return d; }), split = loaded ? topN(raw) : null;
+    var loaded = raw.every(function (d) { return d; }), split = loaded ? topN(raw, this.P.cat) : null;
     if (split) split.top.forEach(function (i, r) { col[base[i]] = split.color(i, r); });
     var log = this.opts().overlayLog, dropped = log ? nonPositive(raw) : 0;
     var lines = g.kids.map(function (id) {
-      var d = self.data(id, indexed), c = col[id] || OTHER;
+      var d = self.data(id, indexed), c = col[id] || self.P.other;
       if (d && indexed) d = indexTo100(d);
       return { id: id, d: d && log ? log10Of(d) : d, color: c, width: col[id] ? 1.4 : 1, fcColor: c };
     });
@@ -1500,7 +1530,7 @@
     var label = function (id) { return self.memberLabel(id, g); };
     var keys = lines.filter(function (l) { return col[l.id]; }).map(function (l) { return { id: l.id, label: label(l.id), color: l.color }; });
     if (split && split.rest.length) {
-      keys.push({ label: 'Other (' + grey.length + ')', color: OTHER, title: grey.map(function (l) { return label(l.id); }).join(', ') });
+      keys.push({ label: 'Other (' + grey.length + ')', color: this.P.other, title: grey.map(function (l) { return label(l.id); }).join(', ') });
     }
     if (dropped) keys.push(logChip(dropped));
     this.legend(keys);
@@ -1534,12 +1564,12 @@
     var whole = xs.map(function (t) { return parent.y[t] || null; });
     // The largest children nearest zero, and any beyond the colours merged
     // into "Other" on top
-    var ys = ds.map(ext), split = topN(ds), bands = split.top.map(function (i, r) {
+    var ys = ds.map(ext), split = topN(ds, this.P.cat), bands = split.top.map(function (i, r) {
       return { id: g.kids[i], d: ds[i], y: ys[i], label: self.partLabel(self.series[g.kids[i]], g.e), color: split.color(i, r) };
     });
     if (split.rest.length) {
       bands.push({
-        id: 'other', d: parent, color: OTHER, label: 'Other (' + split.rest.length + ')',
+        id: 'other', d: parent, color: this.P.other, label: 'Other (' + split.rest.length + ')',
         title: split.rest.map(function (i) { return self.partLabel(self.series[g.kids[i]], g.e); }).join(', '),
         y: xs.map(function (t) { return split.rest.reduce(function (a, i) { return a + (ys[i][t] || 0); }, 0); })
       });
@@ -1562,18 +1592,18 @@
       neg = down;
     });
     var top = share ? whole.map(function (u) { return u && 1; }) : ext(parent);
-    lines.push({ id: g.parent, d: parent, xs: xs, ys: top.map(function (u, t) { return t < n ? u : null; }), color: INK, width: 1.6, dash: '5 3' });
+    lines.push({ id: g.parent, d: parent, xs: xs, ys: top.map(function (u, t) { return t < n ? u : null; }), color: this.P.ink, width: 1.6, dash: '5 3' });
     if (m) {
       lines.push({ id: g.parent, d: parent, xs: xs, ys: top.map(function (u, t) { return t < n - 1 ? null : u; }),
-        color: MODEL[this.fc.models.indexOf(m) % MODEL.length], width: 1.8, dash: '5 3' });
+        color: this.modelCol(this.fc.models.indexOf(m)), width: 1.8, dash: '5 3' });
     }
     var y = extent([pos, neg, top]);
     var box = el('div', null, this.view);
     this.timePlot(box, W, H, lines, { y: [Math.min(0, y[0]), y[1]], xMax: N - 1, pct: share, now: !!m });
     // The parent's line, the forecasts and negative values join the key
     var whom = this.fullLabel(this.series[g.parent]);
-    keys.push({ id: g.parent, label: share ? '100% of ' + whom : whom, dash: INK, title: 'Coherent children stack to it' });
-    if (m) keys.push({ label: m, dash: MODEL[this.fc.models.indexOf(m) % MODEL.length], title: 'Forecast means, after the line' });
+    keys.push({ id: g.parent, label: share ? '100% of ' + whom : whom, dash: this.P.ink, title: 'Coherent children stack to it' });
+    if (m) keys.push({ label: m, dash: this.modelCol(this.fc.models.indexOf(m)), title: 'Forecast means, after the line' });
     if (neg.some(function (u) { return u < 0; })) keys.push({ chip: true, label: 'Negatives below 0', title: 'Negative values stack below zero' });
     this.legend(keys);
   };
@@ -1594,7 +1624,7 @@
 
   // One line per seasonal cycle of a full series, oldest faintest, and the cycles' labels
   Explorer.prototype.seasonLines = function (d, id) {
-    var season = this.spec.season, cycles = [], cur = null;
+    var season = this.spec.season, SEASON = this.P.season, cycles = [], cur = null;
     for (var t = 0; t < d.y.length; t++) {
       if (!cur || season.cycle[t] !== cur.label) { cur = { label: season.cycle[t], xs: [], ys: [] }; cycles.push(cur); }
       cur.xs.push(season.pos[t] - 1);
@@ -1680,12 +1710,65 @@
 
   // ---- Start -------------------------------------------------------------------
 
-  var root = document.getElementById('gx');
-  fetch('api/spec')
-    .then(function (r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
-    .then(function (spec) { window.explorer = new Explorer(root, spec); })
-    .catch(function (err) {
-      root.textContent = '';
-      el('p', 'gx-error', root, 'Could not load the series graph: ' + err.message);
-    });
+  // Sources of the structure and series: spec() promises the spec, and
+  // series(measure, ids, raw) an object of the series' data by id.
+  function getJSON(url) {
+    return fetch(url).then(function (r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); });
+  }
+  // The api of graph_explore() at `base`, by default relative to the page
+  function remote(base) {
+    base = base || '';
+    if (base && base.charAt(base.length - 1) !== '/') base += '/';
+    return {
+      spec: function () { return getJSON(base + 'api/spec'); },
+      series: function (measure, ids, raw) {
+        return getJSON(base + 'api/series?measure=' + encodeURIComponent(measure) + '&raw=' + (raw ? 1 : 0) + '&ids=' + ids.join(','));
+      }
+    };
+  }
+  // A payload {spec, series: {measure: {id: data}}} of full series, from
+  // graph_save() or graph_widget(): an object, its JSON, or a promise of
+  // either. Full series answer reduced requests too.
+  function inline(payload) {
+    var p = Promise.resolve(payload).then(function (x) { return typeof x === 'string' ? JSON.parse(x) : x; });
+    return {
+      spec: function () { return p.then(function (x) { return x.spec; }); },
+      series: function (measure, ids) {
+        return p.then(function (x) {
+          var m = x.series[measure] || {}, out = {};
+          ids.forEach(function (id) {
+            if (!m[id]) throw new Error('No series ' + id + ' of ' + measure);
+            out[id] = m[id];
+          });
+          return out;
+        });
+      }
+    };
+  }
+  // A storage key for a spec: a hash of its structure, keys, measures and
+  // number of series, so other data on the same origin keep their own
+  function specKey(spec) {
+    var s = [spec.structure, spec.keys.join(','), spec.measures.join(','), spec.series.length].join('|'), h = 5381;
+    for (var i = 0; i < s.length; i++) h = (h * 33 + s.charCodeAt(i)) | 0;
+    return (h >>> 0).toString(36);
+  }
+  // Draw an explorer in `node`. opts: source (remote() by default), height
+  // (px or a CSS length) and storageKey. Promises the explorer, or undefined
+  // when the spec can't be loaded, which the element then says.
+  function mount(node, opts) {
+    opts = opts || {};
+    var source = opts.source || remote();
+    node.classList.add('gx');
+    if (opts.height != null) node.style.height = typeof opts.height === 'number' ? opts.height + 'px' : opts.height;
+    if (!node.firstChild) el('p', 'gx-loading', node, 'Loading the series graph…');
+    return source.spec()
+      .then(function (spec) { return new Explorer(node, spec, source, opts.storageKey || specKey(spec)); })
+      .catch(function (err) {
+        node.textContent = '';
+        el('p', 'gx-error', node, 'Could not load the series graph: ' + err.message);
+        if (window.console) console.error(err);
+      });
+  }
+
+  window.GraphExplore = { mount: mount, remote: remote, inline: inline };
 })();
