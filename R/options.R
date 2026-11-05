@@ -1,7 +1,8 @@
 #' Options for the explorer
 #'
-#' Chooses which views the explorer offers and how it starts, for the
-#' `options` argument of [grafts()].
+#' Chooses which views the explorer offers, how it starts, how its data are
+#' sent and how big it is when embedded, for the `options` argument of
+#' [grafts()].
 #'
 #' The Stacked view and the grid's share-of-parent scale only make sense when
 #' each series is the sum of the series it splits into. With `additive = NULL`
@@ -24,6 +25,15 @@
 #'   scales, layout and theme) in their browser. Use `FALSE` for a fixed
 #'   starting view, such as in documentation. When `TRUE`, saved choices that
 #'   the options don't allow fall back to the first of `views` and each tab's default scale.
+#' @param max_points Series more than twice this long are sent to the app as
+#'   the minimum and maximum of blocks of time, about `max_points` values, so
+#'   spikes stay visible. The season and stacked plots always get the full
+#'   series, and an explorer written into a page ([grafts_save()], documents
+#'   and Shiny) always has the full series.
+#' @param width,height Size of the explorer when written into a page, in
+#'   pixels or as a CSS length. In documents and Shiny the height defaults to
+#'   600px, and a page from [grafts_save()] fills the window.
+#' @param element_id An id for the explorer's element in a document.
 #' @return A `grafts_options` list, for the `options` argument of
 #'   [grafts()].
 #' @examples
@@ -38,24 +48,49 @@
 #' @export
 grafts_options <- function(views = c("grid", "overlay", "stacked", "season"),
                            additive = NULL, season = NULL, theme = c("system", "light", "dark"),
-                           persist = TRUE) {
+                           persist = TRUE, max_points = 1000,
+                           width = NULL, height = NULL, element_id = NULL) {
   explicit <- !missing(views)
   views <- arg_match(views, c("grid", "overlay", "stacked", "season"), multiple = TRUE)
   views <- unique(views)
   if (!length(views)) abort("`views` must name at least one view.")
-  if (!is.null(additive) && !(is.logical(additive) && length(additive) == 1 && !is.na(additive))) {
-    abort("`additive` must be `TRUE`, `FALSE` or `NULL`.")
-  }
-  if (!(is.null(season) || isFALSE(season) || (is.character(season) && length(season) == 1 && !is.na(season)))) {
+  check_flag(additive, null = TRUE)
+  if (!(is.null(season) || isFALSE(season) || is_string(season))) {
     abort("`season` must be `NULL`, `FALSE` or the name of a period, such as \"week\".")
   }
   theme <- arg_match(theme)
-  if (!(is.logical(persist) && length(persist) == 1 && !is.na(persist))) abort("`persist` must be `TRUE` or `FALSE`.")
+  check_flag(persist)
+  if (!(is.numeric(max_points) && length(max_points) == 1 && !is.na(max_points) && max_points >= 2)) {
+    abort("`max_points` must be a number, at least 2.")
+  }
+  check_size(width)
+  check_size(height)
+  if (!(is.null(element_id) || is_string(element_id))) abort("`element_id` must be `NULL` or a string.")
   structure(
     list(views = views, additive = additive, season = season, theme = theme,
-         persist = persist, explicit_views = explicit),
+         persist = persist, max_points = max_points,
+         width = width, height = height, element_id = element_id),
+    explicit_views = explicit,
     class = "grafts_options"
   )
+}
+
+is_string <- function(x) is.character(x) && length(x) == 1 && !is.na(x)
+
+check_flag <- function(x, null = FALSE, arg = rlang::caller_arg(x), call = rlang::caller_env()) {
+  if (null && is.null(x)) return(invisible(x))
+  if (!(is.logical(x) && length(x) == 1 && !is.na(x))) {
+    abort(paste0("`", arg, "` must be `TRUE` or `FALSE`", if (null) " or `NULL`", "."), call = call)
+  }
+  invisible(x)
+}
+
+# A size in pixels, or as a CSS length
+check_size <- function(x, arg = rlang::caller_arg(x), call = rlang::caller_env()) {
+  if (!(is.null(x) || (is.numeric(x) && length(x) == 1 && !is.na(x) && x > 0) || is_string(x))) {
+    abort(paste0("`", arg, "` must be `NULL`, a number of pixels or a CSS length."), call = call)
+  }
+  invisible(x)
 }
 
 #' @export
@@ -73,7 +108,7 @@ resolve_options <- function(options, data, values, s, fixed, combos, dims, seaso
   drop <- character()
   if (!additive) drop <- c(drop, "stacked")
   if (is.null(season)) drop <- c(drop, "season")
-  if (options$explicit_views && !additive && "stacked" %in% views) {
+  if (isTRUE(attr(options, "explicit_views")) && !additive && "stacked" %in% views) {
     cli::cli_inform(c(i = "Dropping the Stacked view: the series don't add up to their parents.",
                       "*" = "Set `additive = TRUE` in {.fn grafts_options} to keep it."))
   }

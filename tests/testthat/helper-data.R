@@ -10,5 +10,5 @@ small <- local({
 })
 
 model_of <- function(data, ...) {
-  explore_model(data, rlang::quo(NULL), NULL, c(80, 95), 1000, ...)
+  explore_model(data, rlang::quo(NULL), NULL, c(80, 95), ...)
 }

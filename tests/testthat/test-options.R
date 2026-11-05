@@ -62,3 +62,13 @@ test_that("options reach the spec and payload", {
   expect_match(html, "\"persist\":false", fixed = TRUE)
   expect_match(html, "\"theme\":\"dark\"", fixed = TRUE)
 })
+
+test_that("sizes, ids and point limits are checked", {
+  o <- grafts_options(max_points = 50, width = "50%", height = 300, element_id = "a")
+  expect_equal(c(o$max_points, o$width, o$height, o$element_id), c("50", "50%", "300", "a"))
+  expect_error(grafts_options(max_points = 1), "max_points")
+  expect_error(grafts_options(height = -1), "height")
+  expect_error(grafts_options(element_id = 1), "element_id")
+  expect_error(grafts_options(persist = NA), "persist")
+  expect_equal(grafts(fabletools::aggregate_key(small, State / Region, y = sum(y)), options = grafts_options(max_points = 7))$model$max_points, 7)
+})

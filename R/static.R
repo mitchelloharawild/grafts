@@ -27,7 +27,7 @@
 #' if (interactive()) utils::browseURL(file)
 #'
 #' # The page's height, rather than the window's
-#' grafts(tourism_agg, height = 500) |>
+#' grafts(tourism_agg, options = grafts_options(height = 500)) |>
 #'   grafts_save(tempfile(fileext = ".html"))
 #' @export
 grafts_save <- function(explorer, file, self_contained = TRUE) {
@@ -43,7 +43,7 @@ grafts_save <- function(explorer, file, self_contained = TRUE) {
       "<style>",
       "  html, body { margin: 0; background: #F6F7F9; }",
       "  @media (prefers-color-scheme: dark) { html, body { background: #0F1115; } }",
-      paste0("  body > .gx { height: ", css_length(x$height, "100vh"), "; }"),
+      paste0("  body > .gx { height: ", css_length(x$options$height, "100vh"), "; }"),
       "</style>", "</head>", "<body>", "<div id=\"gx\" class=\"gx\"></div>", body, "</body>", "</html>"
     )
   }
@@ -84,8 +84,8 @@ as_widget <- function(x) {
   # The payload is already JSON, which htmlwidgets writes as it is
   payload <- list(payload = structure(json, class = "json"))
   htmlwidgets::createWidget(
-    "grafts", payload, width = x$width, height = x$height, package = "grafts",
-    elementId = x$elementId, dependencies = grafts_dependency(),
+    "grafts", payload, width = x$options$width, height = x$options$height, package = "grafts",
+    elementId = x$options$element_id, dependencies = grafts_dependency(),
     sizingPolicy = htmlwidgets::sizingPolicy(
       defaultWidth = "100%", defaultHeight = 600, padding = 0,
       browser.fill = TRUE, viewer.fill = TRUE, knitr.figure = FALSE

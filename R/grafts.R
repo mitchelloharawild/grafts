@@ -35,12 +35,8 @@
 #'   optionally `.model`). Its response variable must be a measured variable of
 #'   `data`. Each model's mean and intervals are drawn after the data.
 #' @param level Interval levels drawn for `forecasts`.
-#' @param options Which views the explorer offers and how it starts, from
-#'   [grafts_options()].
-#' @param width,height Size of the explorer when written into a page, in
-#'   pixels or as a CSS length. In documents and Shiny the height defaults to
-#'   600px, and a page from [grafts_save()] fills the window.
-#' @param elementId An id for the explorer's element in a document.
+#' @param options Which views the explorer offers, how it starts and is
+#'   sized, and how its data are sent, from [grafts_options()].
 #' @return An explorer, of class `grafts`.
 #' @examples
 #' tourism_agg <- fabletools::aggregate_key(
@@ -61,12 +57,10 @@
 #' }
 #' @export
 grafts <- function(data, measure = NULL, forecasts = NULL, level = c(80, 95),
-                   options = grafts_options(), width = NULL, height = NULL, elementId = NULL) {
-  model <- explore_model(data, enquo(measure), forecasts, level, 1000, options)
+                   options = grafts_options()) {
+  model <- explore_model(data, enquo(measure), forecasts, level, options)
   structure(
-    list(
-      model = model, width = width, height = height, elementId = elementId
-    ),
+    list(model = model, options = options),
     class = "grafts"
   )
 }

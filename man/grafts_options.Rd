@@ -9,7 +9,11 @@ grafts_options(
   additive = NULL,
   season = NULL,
   theme = c("system", "light", "dark"),
-  persist = TRUE
+  persist = TRUE,
+  max_points = 1000,
+  width = NULL,
+  height = NULL,
+  element_id = NULL
 )
 }
 \arguments{
@@ -32,14 +36,27 @@ view, or the name of one of \code{fabletools::common_periods(data)}, such as
 scales, layout and theme) in their browser. Use \code{FALSE} for a fixed
 starting view, such as in documentation. When \code{TRUE}, saved choices that
 the options don't allow fall back to the first of \code{views} and each tab's default scale.}
+
+\item{max_points}{Series more than twice this long are sent to the app as
+the minimum and maximum of blocks of time, about \code{max_points} values, so
+spikes stay visible. The season and stacked plots always get the full
+series, and an explorer written into a page (\code{\link[=grafts_save]{grafts_save()}}, documents
+and Shiny) always has the full series.}
+
+\item{width, height}{Size of the explorer when written into a page, in
+pixels or as a CSS length. In documents and Shiny the height defaults to
+600px, and a page from \code{\link[=grafts_save]{grafts_save()}} fills the window.}
+
+\item{element_id}{An id for the explorer's element in a document.}
 }
 \value{
 A \code{grafts_options} list, for the \code{options} argument of
 \code{\link[=grafts]{grafts()}}.
 }
 \description{
-Chooses which views the explorer offers and how it starts, for the
-\code{options} argument of \code{\link[=grafts]{grafts()}}.
+Chooses which views the explorer offers, how it starts, how its data are
+sent and how big it is when embedded, for the \code{options} argument of
+\code{\link[=grafts]{grafts()}}.
 }
 \details{
 The Stacked view and the grid's share-of-parent scale only make sense when

@@ -35,6 +35,6 @@ file <- grafts_save(grafts(tourism_agg), tempfile(fileext = ".html"))
 if (interactive()) utils::browseURL(file)
 
 # The page's height, rather than the window's
-grafts(tourism_agg, height = 500) |>
+grafts(tourism_agg, options = grafts_options(height = 500)) |>
   grafts_save(tempfile(fileext = ".html"))
 }

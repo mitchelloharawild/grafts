@@ -2,7 +2,7 @@ test_that("data must be an aggregated tsibble with numeric measures", {
   expect_error(model_of(as.data.frame(small)), "must be a tsibble")
   expect_error(model_of(small), "must be aggregated")
   agg <- fabletools::aggregate_key(small, State / Region, y = sum(y))
-  expect_error(explore_model(agg, rlang::quo(z), NULL, 80, 1000), "numeric measured variable")
+  expect_error(explore_model(agg, rlang::quo(z), NULL, 80), "numeric measured variable")
 })
 
 test_that("series are sent with their history's total", {
@@ -17,7 +17,7 @@ test_that("forecasts are matched to series by key, per model", {
   skip_if_not_installed("fable")
   agg <- fabletools::aggregate_key(small, State / Region, y = sum(y))
   fc <- fabletools::forecast(fabletools::model(agg, naive = fable::NAIVE(y), mean = fable::MEAN(y)), h = 4)
-  m <- explore_model(agg, rlang::quo(NULL), fc, c(80, 95), 1000)
+  m <- explore_model(agg, rlang::quo(NULL), fc, c(80, 95))
   expect_equal(m$spec$forecast$models, I(c("naive", "mean")))
   expect_length(m$spec$times, 12)
   s <- explore_series(m, "y", 0L)[["0"]]

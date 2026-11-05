@@ -23,9 +23,6 @@
 #' @param api A plumber2 api, such as from `plumber2::api()`.
 #' @param path Where the explorer is mounted on `api`. Mount several explorers
 #'   at different paths, such as `"/tourism/"` and `"/retail/"`.
-#' @param max_points Series more than twice this long are sent as the minimum
-#'   and maximum of blocks of time, about `max_points` values, so spikes stay
-#'   visible. The season and stacked plots always get the full series.
 #' @param max_ids The most series that one request to `api/series` may ask for.
 #'   The app asks for up to 200 at a time.
 #' @param port,host Where the app is served, by default port 8000 on this
@@ -58,9 +55,8 @@
 #' # Rscript -e 'readRDS("tourism_agg.rds") |> grafts::grafts() |>
 #' #   grafts::grafts_serve(host = "0.0.0.0")'
 #' @export
-grafts_api <- function(api, explorer, path = "/", max_points = 1000, max_ids = 1000) {
+grafts_api <- function(api, explorer, path = "/", max_ids = 1000) {
   model <- check_explorer(explorer)$model
-  model$max_points <- max_points
   path <- paste0("/", gsub("^/+|/+$", "", path), "/")
   path <- sub("^//$", "/", path)
 
@@ -137,11 +133,11 @@ grafts_api <- function(api, explorer, path = "/", max_points = 1000, max_ids = 1
 #' @rdname grafts_api
 #' @export
 grafts_serve <- function(explorer, port = serve_port(), host = serve_host(),
-                         max_points = 1000, launch = FALSE, block = TRUE) {
+                         launch = FALSE, block = TRUE) {
   x <- check_explorer(explorer)
   api <- plumber2::api(host = host, port = port, doc_type = NULL)
   # Without routr's note on making its router
-  api <- suppressMessages(grafts_api(api, x, max_points = max_points))
+  api <- suppressMessages(grafts_api(api, x))
 
   # Announce before running, as a blocking server only returns once stopped
   open_host <- if (host %in% c("0.0.0.0", "::")) "127.0.0.1" else host

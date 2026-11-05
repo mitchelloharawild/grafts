@@ -1,5 +1,5 @@
 # Everything the server needs, computed once
-explore_model <- function(data, measure, forecasts, level, max_points, options = grafts_options()) {
+explore_model <- function(data, measure, forecasts, level, options = grafts_options()) {
   if (!tsibble::is_tsibble(data)) abort("`data` must be a tsibble.")
   keys <- tsibble::key_vars(data)
   plain <- keys[!map_lgl(keys, function(k) inherits(data[[k]], "agg_vec"))]
@@ -65,7 +65,7 @@ explore_model <- function(data, measure, forecasts, level, max_points, options =
     series = map(seq_len(nrow(s)), function(i) unname(as.list(s[i, keys]))),
     forecast = if (!is.null(fc)) list(measure = fc$measure, models = I(fc$models), level = I(level))
   )
-  list(spec = spec, n = nrow(s), values = values, fc = fc, max_points = max_points)
+  list(spec = spec, n = nrow(s), values = values, fc = fc, max_points = options$max_points)
 }
 
 # Series `ids` (0-based) of `measure`, keyed by id, each with its history's

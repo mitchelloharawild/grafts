@@ -96,12 +96,11 @@ test_that("the app's files are served, and the bare path redirects", {
 })
 
 test_that("grafts_api() takes an explorer, and reduces long series", {
-  x <- grafts(agg)
-  api <- grafts_api(plumber2::api(doc_type = NULL), x, max_points = 2)
+  x <- grafts(agg, options = grafts_options(max_points = 2))
+  api <- grafts_api(plumber2::api(doc_type = NULL), x)
   s <- jsonlite::fromJSON(hit(api, "/api/series?ids=0")$body, simplifyVector = FALSE)
   expect_false(is.null(s[["0"]]$step))
-  # The explorer itself keeps the default
-  expect_equal(x$model$max_points, 1000)
+  expect_equal(grafts(agg)$model$max_points, 1000)
 })
 
 test_that("explorers print a summary outside the console", {

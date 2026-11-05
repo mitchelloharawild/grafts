@@ -115,7 +115,8 @@ can hold several explorers. `grafts_save()` writes one to a single HTML
 file.
 
 ``` r
-tourism <- grafts(tourism_agg, forecasts = tourism_fc, height = 600)
+tourism <- grafts(tourism_agg, forecasts = tourism_fc,
+                  options = grafts_options(height = 600))
 tourism  # in a chunk
 grafts_save(tourism, "tourism.html")
 ```

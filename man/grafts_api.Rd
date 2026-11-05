@@ -5,13 +5,12 @@
 \alias{grafts_serve}
 \title{Serve the explorer with plumber2}
 \usage{
-grafts_api(api, explorer, path = "/", max_points = 1000, max_ids = 1000)
+grafts_api(api, explorer, path = "/", max_ids = 1000)
 
 grafts_serve(
   explorer,
   port = serve_port(),
   host = serve_host(),
-  max_points = 1000,
   launch = FALSE,
   block = TRUE
 )
@@ -24,10 +23,6 @@ and options.}
 
 \item{path}{Where the explorer is mounted on \code{api}. Mount several explorers
 at different paths, such as \code{"/tourism/"} and \code{"/retail/"}.}
-
-\item{max_points}{Series more than twice this long are sent as the minimum
-and maximum of blocks of time, about \code{max_points} values, so spikes stay
-visible. The season and stacked plots always get the full series.}
 
 \item{max_ids}{The most series that one request to \code{api/series} may ask for.
 The app asks for up to 200 at a time.}

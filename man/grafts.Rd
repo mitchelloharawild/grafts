@@ -9,10 +9,7 @@ grafts(
   measure = NULL,
   forecasts = NULL,
   level = c(80, 95),
-  options = grafts_options(),
-  width = NULL,
-  height = NULL,
-  elementId = NULL
+  options = grafts_options()
 )
 }
 \arguments{
@@ -27,14 +24,8 @@ optionally \code{.model}). Its response variable must be a measured variable of
 
 \item{level}{Interval levels drawn for \code{forecasts}.}
 
-\item{options}{Which views the explorer offers and how it starts, from
-\code{\link[=grafts_options]{grafts_options()}}.}
-
-\item{width, height}{Size of the explorer when written into a page, in
-pixels or as a CSS length. In documents and Shiny the height defaults to
-600px, and a page from \code{\link[=grafts_save]{grafts_save()}} fills the window.}
-
-\item{elementId}{An id for the explorer's element in a document.}
+\item{options}{Which views the explorer offers, how it starts and is
+sized, and how its data are sent, from \code{\link[=grafts_options]{grafts_options()}}.}
 }
 \value{
 An explorer, of class \code{grafts}.

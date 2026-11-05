@@ -1,7 +1,7 @@
 small_agg <- function() fabletools::aggregate_key(small, Purpose * (State / Region), y = sum(y), z = mean(y))
 
 test_that("the payload has every series of every measure, at full length", {
-  m <- explore_model(small_agg(), rlang::quo(NULL), NULL, c(80, 95), 2)
+  m <- explore_model(small_agg(), rlang::quo(NULL), NULL, c(80, 95), grafts_options(max_points = 2))
   p <- jsonlite::fromJSON(explore_payload(m), simplifyVector = FALSE)
   expect_named(p, c("spec", "series"))
   expect_named(p$series, c("y", "z"))
@@ -17,7 +17,7 @@ test_that("the payload carries forecasts", {
   skip_if_not_installed("fable")
   agg <- small_agg()
   fc <- fabletools::forecast(fabletools::model(agg, naive = fable::NAIVE(y)), h = 4)
-  m <- explore_model(agg, rlang::quo(NULL), fc, c(80, 95), Inf)
+  m <- explore_model(agg, rlang::quo(NULL), fc, c(80, 95), grafts_options(max_points = Inf))
   p <- jsonlite::fromJSON(explore_payload(m), simplifyVector = FALSE)
   expect_equal(p$spec$forecast$models, list("naive"))
   expect_true(all(vapply(p$series$y, function(s) !is.null(s$fc$naive), logical(1))))
@@ -36,7 +36,7 @@ test_that("grafts_save() writes a page holding the payload", {
   odd <- tsibble::as_tsibble(odd, index = Quarter, key = c(State, Region, Purpose))
   agg <- fabletools::aggregate_key(odd, Purpose * (State / Region), y = sum(y), z = mean(y))
   file <- tempfile(fileext = ".html")
-  expect_identical(grafts_save(grafts(agg, height = 500), file), file)
+  expect_identical(grafts_save(grafts(agg, options = grafts_options(height = 500)), file), file)
   html <- paste(readLines(file), collapse = "\n")
   json <- sub('.*<script type="application/json" id="gx-data">(.*?)</script>.*', "\\1", html)
   expect_false(grepl("</script", json, fixed = TRUE))
@@ -60,7 +60,7 @@ test_that("grafts_save() can write its script, styles and data beside the page",
 })
 
 test_that("an explorer becomes a widget holding the payload as JSON", {
-  w <- as_widget(grafts(small_agg(), measure = z, height = 400))
+  w <- as_widget(grafts(small_agg(), measure = z, options = grafts_options(height = 400, element_id = "gx1")))
   expect_s3_class(w, "htmlwidget")
   expect_equal(w$height, 400)
   p <- jsonlite::fromJSON(unclass(w$x$payload), simplifyVector = FALSE)
