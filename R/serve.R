@@ -111,12 +111,19 @@ api_grafts <- function(api, x, ..., path = "/", max_points = 1000, max_ids = 100
     list(route = paste0(path, "grafts.js"), file = "grafts.js", type = "text/javascript"),
     list(route = paste0(path, "grafts.css"), file = "grafts.css", type = "text/css")
   )
+  # The font is binary, and served from the app so that no third party is called
+  for (w in c(400, 600, 700)) {
+    file <- paste0("fonts/source-sans-3-", w, ".woff2")
+    files <- c(files, list(list(
+      route = paste0(path, file), file = file, type = "font/woff2", binary = TRUE
+    )))
+  }
   for (f in files) {
-    text <- read_text(file.path(www, f$file))
+    body <- if (isTRUE(f$binary)) read_bytes(file.path(www, f$file)) else read_text(file.path(www, f$file))
     api <- plumber2::api_get(
       api, f$route, local({
-        text <- text
-        function() text
+        body <- body
+        function() body
       }),
       serializers = set_names(list(identity), f$type)
     )
@@ -173,6 +180,8 @@ serve_host <- function() {
   getOption("grafts.host") %||% (Sys.getenv("GRAFTS_HOST", "") %|% "127.0.0.1")
 }
 `%|%` <- function(x, y) if (nzchar(x)) x else y
+
+read_bytes <- function(path) readBin(path, "raw", file.size(path))
 
 # The IDE's viewer where there is one, as for a Shiny app, else a browser
 open_url <- function(url) {

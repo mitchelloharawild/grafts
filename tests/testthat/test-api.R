@@ -31,6 +31,18 @@ test_that("an unchanged response is a 304, and a changed one is not", {
   expect_equal(again("/api/series?ids=1", etag)$status, 200L)
 })
 
+test_that("the font is served with the app, and no third party is called", {
+  api <- api_grafts(plumber2::api(doc_type = NULL), agg)
+  res <- hit(api, "/fonts/source-sans-3-400.woff2")
+  expect_equal(res$status, 200L)
+  expect_match(res$headers[["content-type"]], "font/woff2")
+  expect_equal(
+    as.integer(res$headers[["content-length"]] %||% length(res$body)),
+    file.size(system.file("www/fonts/source-sans-3-400.woff2", package = "grafts"))
+  )
+  expect_false(grepl("googleapis", hit(api, "/")$body, fixed = TRUE))
+})
+
 test_that("a health route reports the series", {
   api <- api_grafts(plumber2::api(doc_type = NULL), agg)
   res <- hit(api, "/api/health")

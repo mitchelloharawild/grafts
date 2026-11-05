@@ -25,8 +25,8 @@
 #' * On a server, [api_grafts()] adds it to a plumber2 api and [grafts_serve()]
 #'   runs it, sending each series when it is drawn.
 #'
-#' Embedded explorers use the system's UI font. The served app loads Source
-#' Sans 3 from Google Fonts, which a page can load too, for the same look.
+#' Embedded explorers use the system's UI font. The served app brings its own
+#' copy of Source Sans 3, which a page can load too, for the same look.
 #'
 #' @param data An aggregated tsibble, as produced by `fabletools::aggregate_key()`.
 #' @param value The measured variable shown first. Every numeric measured
