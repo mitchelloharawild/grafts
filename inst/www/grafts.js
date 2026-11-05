@@ -22,7 +22,8 @@
 // it beside the node when it isn't.
 //
 // Embedded in an app (Shiny), an explorer reports what it shows through
-// opts.onChange(name, value), so the app can follow it.
+// opts.onChange(name, value) and takes commands from command(name, args), so
+// the app can follow and steer it.
 //
 // render functions are pure functions of the state, and handlers only change
 // the state, so CSS transitions animate every change.
@@ -338,6 +339,88 @@
   }
 
   // ---- Embedding -------------------------------------------------------------
+
+  // The series with these keys (an object of key values, absent when
+  // aggregated), or -1
+  Explorer.prototype.find = function (key) {
+    var self = this;
+    if (Object.keys(key).some(function (k) { return self.keys.indexOf(k) < 0; })) return -1;
+    var hit = this.series.filter(function (s) {
+      return self.keys.every(function (k) { return key[k] == null ? s[k] == null : s[k] != null && String(s[k]) === String(key[k]); });
+    })[0];
+    return hit ? hit.id : -1;
+  };
+  // Draw a series by choosing the splits that lead to it from the total,
+  // searching only the series that it sums into. Promises nothing: false
+  // when no splits reach it.
+  Explorer.prototype.reach = function (id) {
+    var self = this, target = this.series[id];
+    if (this.visibleSet()[id] || this.state.groups.some(function (g) { return g.kids.indexOf(id) > -1; })) return true;
+    var compatible = function (s) { return self.keys.every(function (k) { return s[k] == null || s[k] === target[k]; }); };
+    var via = {}, queue = [this.ROOT];
+    via[this.ROOT] = null;
+    while (queue.length && !(id in via)) {
+      var cur = this.series[queue.shift()];
+      this.splits(cur).forEach(function (e) {
+        self.children(cur, e).forEach(function (c) {
+          if (!(c.id in via) && compatible(c)) { via[c.id] = { from: cur.id, e: e }; queue.push(c.id); }
+        });
+      });
+    }
+    if (!(id in via)) return false;
+    var steps = [];
+    for (var c = id; via[c]; c = via[c].from) steps.unshift(via[c]);
+    steps.forEach(function (step) { self.choose(step.from, step.e); });
+    return true;
+  };
+  Explorer.prototype.ids = function (rows) {
+    var self = this;
+    return (rows || []).map(function (k) { return self.find(k); }).filter(function (id) { return id > -1; });
+  };
+  // Commands from the app: focus {keys}, pin {keys, pinned}, view {view, set},
+  // theme {theme}, measure {measure} and reset
+  Explorer.prototype.command = function (cmd, a) {
+    var self = this, st = this.state, ui = this.ui;
+    a = a || {};
+    if (cmd === 'focus') {
+      var id = this.find(a.keys || {});
+      if (id < 0 || !this.reach(id)) return this.status('No such series');
+      this.focusOn(id);
+      this.render();
+    } else if (cmd === 'pin') {
+      var on = a.pinned !== false, rows = a.keys == null ? [] : a.keys;
+      if (!rows.length && !on) { this.setPins(st.pins.slice(), false); return; }
+      var ids = this.ids(rows);
+      if (ids.length < rows.length) this.status('Some series were not found');
+      var focus = st.focus, last = st.last;
+      if (on) ids = ids.filter(function (id) { return self.reach(id); });
+      st.focus = focus; st.last = last;
+      this.setPins(ids, on);
+    } else if (cmd === 'view') {
+      if (a.view != null) {
+        if (!this.options.tabs.some(function (t) { return t[0] === a.view; })) return this.status('No such view: ' + a.view);
+        ui.tab = a.view;
+      }
+      if (a.set != null) {
+        if (!SCALES[a.set]) return this.status('No such set: ' + a.set);
+        ui.set = a.set;
+      }
+      this.persist();
+      this.renderRight();
+    } else if (cmd === 'theme') {
+      if (!THEMES.some(function (t) { return t[0] === a.theme; })) return this.status('No such theme: ' + a.theme);
+      this.setTheme(a.theme);
+    } else if (cmd === 'measure') {
+      if (this.spec.measures.indexOf(a.measure) < 0) return this.status('No such measure: ' + a.measure);
+      ui.measure = a.measure;
+      if (this.measureSelect) this.measureSelect.value = a.measure;
+      this.render();
+    } else if (cmd === 'reset') {
+      this.state = this.initial();
+      this.resetCam();
+      this.render();
+    }
+  };
 
   // What the app is told: the series as {keys, rows} (keys by column, one row
   // of values per series), and the view
@@ -658,6 +741,7 @@
       spec.measures.forEach(function (m) { el('option', null, select, m).value = m; });
       select.value = this.ui.measure;
       select.addEventListener('change', function () { self.ui.measure = select.value; self.render(); });
+      this.measureSelect = select;
     } else {
       el('span', 'grafts-measure', fh, this.ui.measure);
     }

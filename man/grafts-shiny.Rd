@@ -23,7 +23,8 @@ renderGrafts(expr, env = parent.frame(), quoted = FALSE)
 }
 \description{
 Shows an explorer from \code{\link[=grafts]{grafts()}} in Shiny. The explorer tells the app what
-it shows, through inputs named after its output.
+it shows, through inputs named after its output, and \code{\link[=graftsProxy]{graftsProxy()}} lets
+the app steer it and replace its data.
 }
 \details{
 Every series is written into the page, which suits small data: a Shiny app
@@ -63,4 +64,7 @@ server <- function(input, output, session) {
 }
 shinyApp(ui, server)
 \dontshow{\}) # examplesIf}
+}
+\seealso{
+\code{\link[=graftsProxy]{graftsProxy()}} to steer the explorer and update its data.
 }

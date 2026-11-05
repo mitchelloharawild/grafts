@@ -2,7 +2,8 @@
 // again (as Shiny does) replaces the explorer drawn before.
 //
 // In Shiny the explorer tells the app what it shows, as the inputs
-// <id>_focus, _children, _pinned, _split, _view, _set, _theme and _measure.
+// <id>_focus, _children, _pinned, _split, _view, _set, _theme and _measure,
+// and takes the commands of graftsProxy().
 HTMLWidgets.widget({
   name: 'grafts',
   type: 'output',
@@ -27,9 +28,23 @@ HTMLWidgets.widget({
         el.appendChild(box);
         drawn = mount(x);
       },
+      // Run a command of the app once the explorer is drawn
+      command: function (cmd, args) {
+        if (!drawn) return;
+        drawn.then(function (e) { if (e) e.command(cmd, args); });
+      },
       // The explorer follows its size itself
       resize: function () {}
     };
     return widget;
   }
 });
+
+// Commands from graftsProxy(), sent to the widget of the output they name
+if (window.Shiny) {
+  Shiny.addCustomMessageHandler('grafts', function (msg) {
+    var node = document.getElementById(msg.id), widget = node && HTMLWidgets.getInstance(node);
+    if (!widget) return;
+    widget.command(msg.cmd, msg.args);
+  });
+}
