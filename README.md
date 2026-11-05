@@ -102,6 +102,14 @@ readRDS("tourism_agg.rds") |>
   grafts_serve(host = "0.0.0.0")
 ```
 
+Responses are cached privately and revalidated, `api/health` answers
+load balancers, and the page’s links are relative, so the app works
+behind a proxy that mounts it under a path prefix. `grafts_serve()`
+listens on port 8000 (or `GRAFTS_PORT`/`PORT`), and has no sign-in, so
+keep anything private behind an authenticating proxy. In Shiny,
+`renderGrafts()` writes every series into the page, which suits small
+data; for large data, link to a served explorer.
+
 Several explorers can share one api by giving each a `path`, such as
 `grafts_api(api, grafts(tourism_agg), path = "/tourism/")`.
 

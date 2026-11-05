@@ -23,5 +23,7 @@ renderGrafts(expr, env = parent.frame(), quoted = FALSE)
 }
 \description{
 Shows an explorer from \code{\link[=grafts]{grafts()}} in Shiny, with every series written into
-the page.
+the page. This suits small data: a Shiny app can't send a series at a time,
+so to explore large data, serve the explorer with \code{\link[=grafts_api]{grafts_api()}} or
+\code{\link[=grafts_serve]{grafts_serve()}} and link to it or embed it in an \verb{<iframe>}.
 }

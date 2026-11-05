@@ -128,8 +128,10 @@ grafts_api <- function(api, explorer, path = "/", max_ids = 1000) {
       serializers = set_names(list(identity), f$type)
     )
   }
-  # The page's urls are relative, so it must be opened at the trailing slash
-  if (path != "/") api <- plumber2::api_redirect(api, "get", sub("/$", "", path), path)
+  # The page's urls are relative, so it must be opened at the trailing slash.
+  # The redirect is relative too, so it stays inside a prefix that a proxy
+  # (such as Posit Connect's /content/<id>/) adds to the path.
+  if (path != "/") api <- plumber2::api_redirect(api, "get", sub("/$", "", path), paste0(basename(path), "/"))
 
   attr(api, "grafts_n") <- model$n
   api

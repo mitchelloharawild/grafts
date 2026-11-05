@@ -99,7 +99,9 @@ as_widget <- function(x) {
 #' Shiny bindings for grafts()
 #'
 #' Shows an explorer from [grafts()] in Shiny, with every series written into
-#' the page.
+#' the page. This suits small data: a Shiny app can't send a series at a time,
+#' so to explore large data, serve the explorer with [grafts_api()] or
+#' [grafts_serve()] and link to it or embed it in an `<iframe>`.
 #'
 #' @param outputId Output variable to read from.
 #' @param width,height A CSS length for the explorer.

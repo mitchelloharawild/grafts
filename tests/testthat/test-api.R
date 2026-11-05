@@ -97,7 +97,8 @@ test_that("the app's files are served, and the bare path redirects", {
   expect_match(hit(api, "/tourism/grafts.css")$headers[["content-type"]], "text/css")
   res <- hit(api, "/tourism")
   expect_true(res$status %in% c(301L, 302L, 307L, 308L))
-  expect_equal(res$headers[["location"]], "/tourism/")
+  # Relative, so a path prefix added by a proxy is kept
+  expect_equal(res$headers[["location"]], "tourism/")
 })
 
 test_that("grafts_api() takes an explorer, and reduces long series", {
