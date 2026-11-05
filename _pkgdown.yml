@@ -18,7 +18,7 @@ reference:
 - title: "Serving"
   desc: "The explorer on a server, sending each series when it is drawn"
   contents:
-  - api_grafts
+  - grafts_api
 - title: "Embedding"
   desc: "The explorer on static web pages, with no R process behind it"
   contents:

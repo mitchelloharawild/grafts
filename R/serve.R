@@ -4,7 +4,7 @@
 
 #' Serve the explorer with plumber2
 #'
-#' `api_grafts()` adds an explorer to a plumber2 api, for deploying it (with
+#' `grafts_api()` adds an explorer to a plumber2 api, for deploying it (with
 #' Docker or Posit Connect, say) or mounting it beside other routes. It adds
 #' the routes `{path}api/spec`, `{path}api/series` and `{path}api/health` (for
 #' load balancers and containers), and the app's page at `{path}`, which
@@ -18,10 +18,8 @@
 #' The data stays in R, and the app is sent each series when it is drawn, so
 #' data of any size can be explored.
 #'
-#' @param x An explorer from [grafts()], or an aggregated tsibble to make one
-#'   from, with the arguments of [grafts()] given in `...`.
-#' @param ... Arguments of [grafts()], such as `forecasts` or `options`, when
-#'   `x` is data.
+#' @param explorer An explorer from [grafts()], which takes the data, forecasts
+#'   and options.
 #' @param api A plumber2 api, such as from `plumber2::api()`.
 #' @param path Where the explorer is mounted on `api`. Mount several explorers
 #'   at different paths, such as `"/tourism/"` and `"/retail/"`.
@@ -40,27 +38,28 @@
 #'   a browser.
 #' @param block Block the R session while serving, like a Shiny app. When
 #'   `FALSE`, stop the app with `plumber2::api_stop()` on the returned api.
-#' @return `api_grafts()` returns `api` with the explorer added.
+#' @return `grafts_api()` returns `api` with the explorer added.
 #'   `grafts_serve()` returns its plumber2 api, invisibly.
 #' @examplesIf FALSE
 #' # A plumber2 file (plumber.R), for Posit Connect or plumber2::api("plumber.R")
 #' #* @plumber
 #' function(api) {
 #'   data <- readRDS("tourism_agg.rds")
-#'   api_grafts(api, data)
+#'   grafts_api(api, grafts(data))
 #' }
 #'
 #' # Several datasets on one api, at /tourism/ and /retail/
 #' plumber2::api() |>
-#'   api_grafts(tourism_agg, path = "/tourism/") |>
-#'   api_grafts(grafts(retail_agg, forecasts = retail_fc), path = "/retail/") |>
+#'   grafts_api(grafts(tourism_agg), path = "/tourism/") |>
+#'   grafts_api(grafts(retail_agg, forecasts = retail_fc), path = "/retail/") |>
 #'   plumber2::api_run()
 #'
 #' # In Docker, from the command line
-#' # Rscript -e 'readRDS("tourism_agg.rds") |> grafts::grafts_serve(host = "0.0.0.0")'
+#' # Rscript -e 'readRDS("tourism_agg.rds") |> grafts::grafts() |>
+#' #   grafts::grafts_serve(host = "0.0.0.0")'
 #' @export
-api_grafts <- function(api, x, ..., path = "/", max_points = 1000, max_ids = 1000) {
-  model <- as_grafts(x, ...)$model
+grafts_api <- function(api, explorer, path = "/", max_points = 1000, max_ids = 1000) {
+  model <- check_explorer(explorer)$model
   model$max_points <- max_points
   path <- paste0("/", gsub("^/+|/+$", "", path), "/")
   path <- sub("^//$", "/", path)
@@ -135,14 +134,14 @@ api_grafts <- function(api, x, ..., path = "/", max_points = 1000, max_ids = 100
   api
 }
 
-#' @rdname api_grafts
+#' @rdname grafts_api
 #' @export
-grafts_serve <- function(x, ..., port = serve_port(), host = serve_host(),
+grafts_serve <- function(explorer, port = serve_port(), host = serve_host(),
                          max_points = 1000, launch = FALSE, block = TRUE) {
-  x <- as_grafts(x, ...)
+  x <- check_explorer(explorer)
   api <- plumber2::api(host = host, port = port, doc_type = NULL)
   # Without routr's note on making its router
-  api <- suppressMessages(api_grafts(api, x, max_points = max_points))
+  api <- suppressMessages(grafts_api(api, x, max_points = max_points))
 
   # Announce before running, as a blocking server only returns once stopped
   open_host <- if (host %in% c("0.0.0.0", "::")) "127.0.0.1" else host

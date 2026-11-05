@@ -22,14 +22,14 @@
 #' * In R Markdown, Quarto, pkgdown or Shiny ([renderGrafts()]), and in a page
 #'   written by [grafts_save()], every series is written into the page, which
 #'   needs no R session. This suits small data.
-#' * On a server, [api_grafts()] adds it to a plumber2 api and [grafts_serve()]
+#' * On a server, [grafts_api()] adds it to a plumber2 api and [grafts_serve()]
 #'   runs it, sending each series when it is drawn.
 #'
 #' Embedded explorers use the system's UI font. The served app brings its own
 #' copy of Source Sans 3, which a page can load too, for the same look.
 #'
 #' @param data An aggregated tsibble, as produced by `fabletools::aggregate_key()`.
-#' @param value The measured variable shown first. Every numeric measured
+#' @param measure The measured variable shown first. Every numeric measured
 #'   variable can be chosen in the app. Defaults to the first.
 #' @param forecasts A fable of forecasts for `data`, with the same keys (and
 #'   optionally `.model`). Its response variable must be a measured variable of
@@ -60,9 +60,9 @@
 #'   grafts(tourism_agg, forecasts = tourism_fc)
 #' }
 #' @export
-grafts <- function(data, value = NULL, forecasts = NULL, level = c(80, 95),
+grafts <- function(data, measure = NULL, forecasts = NULL, level = c(80, 95),
                    options = grafts_options(), width = NULL, height = NULL, elementId = NULL) {
-  model <- explore_model(data, enquo(value), forecasts, level, 1000, options)
+  model <- explore_model(data, enquo(measure), forecasts, level, 1000, options)
   structure(
     list(
       model = model, width = width, height = height, elementId = elementId
@@ -107,13 +107,14 @@ as.tags.grafts <- function(x, ...) {
   htmltools::as.tags(as_widget(x), ...)
 }
 
-# An explorer from `x`, or from data `x` and the arguments of grafts() in `...`
-as_grafts <- function(x, ..., call = rlang::caller_env()) {
-  if (inherits(x, "grafts") && !inherits(x, "htmlwidget")) {
-    if (...length()) {
-      abort("Arguments in `...` only apply when `x` is data, not an explorer from `grafts()`.", call = call)
-    }
-    return(x)
-  }
-  grafts(x, ...)
+# An explorer from grafts(), checked: the data and its arguments belong to
+# grafts(), so the functions that deliver an explorer take only the explorer
+check_explorer <- function(x, arg = "explorer", call = rlang::caller_env()) {
+  if (inherits(x, "grafts") && !inherits(x, "htmlwidget")) return(x)
+  abort(
+    c(paste0("`", arg, "` must be an explorer made by `grafts()`."),
+      i = if (inherits(x, "tbl_ts")) "Make one with `grafts(data)`." else
+        "A widget from `grafts()` can't be served or saved; use the explorer itself."),
+    call = call
+  )
 }

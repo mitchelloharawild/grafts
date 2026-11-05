@@ -6,7 +6,7 @@
 \usage{
 grafts(
   data,
-  value = NULL,
+  measure = NULL,
   forecasts = NULL,
   level = c(80, 95),
   options = grafts_options(),
@@ -18,7 +18,7 @@ grafts(
 \arguments{
 \item{data}{An aggregated tsibble, as produced by \code{fabletools::aggregate_key()}.}
 
-\item{value}{The measured variable shown first. Every numeric measured
+\item{measure}{The measured variable shown first. Every numeric measured
 variable can be chosen in the app. Defaults to the first.}
 
 \item{forecasts}{A fable of forecasts for \code{data}, with the same keys (and
@@ -57,12 +57,12 @@ press Ctrl+C (or Esc in RStudio and Positron) to stop it. Use
 \item In R Markdown, Quarto, pkgdown or Shiny (\code{\link[=renderGrafts]{renderGrafts()}}), and in a page
 written by \code{\link[=grafts_save]{grafts_save()}}, every series is written into the page, which
 needs no R session. This suits small data.
-\item On a server, \code{\link[=api_grafts]{api_grafts()}} adds it to a plumber2 api and \code{\link[=grafts_serve]{grafts_serve()}}
+\item On a server, \code{\link[=grafts_api]{grafts_api()}} adds it to a plumber2 api and \code{\link[=grafts_serve]{grafts_serve()}}
 runs it, sending each series when it is drawn.
 }
 
-Embedded explorers use the system's UI font. The served app loads Source
-Sans 3 from Google Fonts, which a page can load too, for the same look.
+Embedded explorers use the system's UI font. The served app brings its own
+copy of Source Sans 3, which a page can load too, for the same look.
 }
 \examples{
 tourism_agg <- fabletools::aggregate_key(

@@ -1,5 +1,5 @@
 # Everything the server needs, computed once
-explore_model <- function(data, value, forecasts, level, max_points, options = grafts_options()) {
+explore_model <- function(data, measure, forecasts, level, max_points, options = grafts_options()) {
   if (!tsibble::is_tsibble(data)) abort("`data` must be a tsibble.")
   keys <- tsibble::key_vars(data)
   plain <- keys[!map_lgl(keys, function(k) inherits(data[[k]], "agg_vec"))]
@@ -12,8 +12,8 @@ explore_model <- function(data, value, forecasts, level, max_points, options = g
   }
   measures <- keep(tsibble::measured_vars(data), function(v) is.numeric(data[[v]]))
   if (!length(measures)) abort("`data` has no numeric measured variables.")
-  measure <- if (quo_is_null(value)) measures[[1]] else as_name(value)
-  if (!measure %in% measures) abort("`value` must be a numeric measured variable of `data`.")
+  measure <- if (quo_is_null(measure)) measures[[1]] else as_name(measure)
+  if (!measure %in% measures) abort("`measure` must be a numeric measured variable of `data`.")
 
   index <- tsibble::index_var(data)
   tb <- key_strings(tsibble::as_tibble(data), keys)

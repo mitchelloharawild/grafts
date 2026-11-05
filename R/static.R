@@ -2,19 +2,19 @@
 # static page, with no R process behind it. Every series is sent at once, at
 # full length, as the inline payload {spec, series: {measure: {id: data}}}
 # that Grafts.inline() in inst/www/grafts.js reads. Suited to small data;
-# api_grafts() serves large data a series at a time.
+# grafts_api() serves large data a series at a time.
 
 #' Save the explorer as a static web page
 #'
 #' Writes an explorer from [grafts()] to an HTML file that needs no R session,
 #' for sharing or publishing on a static site (such as GitHub Pages or a
 #' pkgdown site). Every series, and its forecasts, is written into the page,
-#' so it suits small data: for large data use [api_grafts()], which serves
+#' so it suits small data: for large data use [grafts_api()], which serves
 #' each series only when it is drawn.
 #'
-#' @inheritParams api_grafts
+#' @inheritParams grafts_api
 #' @param file The HTML file to write.
-#' @param selfcontained Write a single file holding the explorer's script,
+#' @param self_contained Write a single file holding the explorer's script,
 #'   styles and data. When `FALSE`, `file` loads `grafts.js`,
 #'   `grafts.css` and `data.json` written beside it. Browsers only load
 #'   `data.json` when the page is served over http(s), not opened from disk.
@@ -23,15 +23,15 @@
 #' tourism_agg <- fabletools::aggregate_key(
 #'   tsibble::tourism, Purpose * (State / Region), Trips = sum(Trips)
 #' )
-#' file <- grafts_save(tourism_agg, tempfile(fileext = ".html"))
+#' file <- grafts_save(grafts(tourism_agg), tempfile(fileext = ".html"))
 #' if (interactive()) utils::browseURL(file)
 #'
 #' # The page's height, rather than the window's
 #' grafts(tourism_agg, height = 500) |>
 #'   grafts_save(tempfile(fileext = ".html"))
 #' @export
-grafts_save <- function(x, file, ..., selfcontained = TRUE) {
-  x <- as_grafts(x, ...)
+grafts_save <- function(explorer, file, self_contained = TRUE) {
+  x <- check_explorer(explorer)
   json <- explore_payload(x$model)
   check_payload_size(json)
   www <- system.file("www", package = "grafts")
@@ -50,7 +50,7 @@ grafts_save <- function(x, file, ..., selfcontained = TRUE) {
   mount <- function(source) {
     c("<script>", paste0("  Grafts.mount(document.getElementById('gx'), { source: Grafts.inline(", source, ") });"), "</script>")
   }
-  if (selfcontained) {
+  if (self_contained) {
     html <- page(
       c("<style>", read_text(file.path(www, "grafts.css")), "</style>"),
       c(
@@ -78,7 +78,7 @@ grafts_save <- function(x, file, ..., selfcontained = TRUE) {
 # The htmlwidget of an explorer, as knitted or rendered in Shiny
 as_widget <- function(x) {
   if (inherits(x, "htmlwidget")) return(x)
-  x <- as_grafts(x)
+  x <- check_explorer(x, "x")
   json <- explore_payload(x$model)
   check_payload_size(json)
   # The payload is already JSON, which htmlwidgets writes as it is
@@ -141,7 +141,7 @@ check_payload_size <- function(json, max = 5e6) {
   if (size > max) {
     cli::cli_warn(c(
       "The explorer's data take {prettyNum(round(size / 1e6, 1))} MB, which is slow to load in a page.",
-      i = "Serve large data a series at a time with {.fn api_grafts}, or by printing the explorer in the console."
+      i = "Serve large data a series at a time with {.fn grafts_api}, or by printing the explorer in the console."
     ))
   }
 }

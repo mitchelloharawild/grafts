@@ -36,7 +36,7 @@ test_that("grafts_save() writes a page holding the payload", {
   odd <- tsibble::as_tsibble(odd, index = Quarter, key = c(State, Region, Purpose))
   agg <- fabletools::aggregate_key(odd, Purpose * (State / Region), y = sum(y), z = mean(y))
   file <- tempfile(fileext = ".html")
-  expect_identical(grafts_save(agg, file, height = 500), file)
+  expect_identical(grafts_save(grafts(agg, height = 500), file), file)
   html <- paste(readLines(file), collapse = "\n")
   json <- sub('.*<script type="application/json" id="gx-data">(.*?)</script>.*', "\\1", html)
   expect_false(grepl("</script", json, fixed = TRUE))
@@ -51,7 +51,7 @@ test_that("grafts_save() writes a page holding the payload", {
 test_that("grafts_save() can write its script, styles and data beside the page", {
   dir <- tempfile()
   dir.create(dir)
-  grafts_save(small_agg(), file.path(dir, "index.html"), selfcontained = FALSE)
+  grafts_save(grafts(small_agg()), file.path(dir, "index.html"), self_contained = FALSE)
   expect_setequal(list.files(dir), c("index.html", "grafts.js", "grafts.css", "data.json"))
   p <- jsonlite::fromJSON(file.path(dir, "data.json"), simplifyVector = FALSE)
   expect_named(p, c("spec", "series"))
@@ -60,7 +60,7 @@ test_that("grafts_save() can write its script, styles and data beside the page",
 })
 
 test_that("an explorer becomes a widget holding the payload as JSON", {
-  w <- as_widget(grafts(small_agg(), value = z, height = 400))
+  w <- as_widget(grafts(small_agg(), measure = z, height = 400))
   expect_s3_class(w, "htmlwidget")
   expect_equal(w$height, 400)
   p <- jsonlite::fromJSON(unclass(w$x$payload), simplifyVector = FALSE)
@@ -78,7 +78,7 @@ test_that("the explorer and its widget share a class, but not methods", {
   expect_s3_class(w, c("grafts", "htmlwidget"), exact = TRUE)
   expect_identical(as_widget(w), w)
   expect_match(as.character(htmltools::as.tags(w)), "htmlwidget", fixed = TRUE)
-  expect_error(api_grafts(plumber2::api(doc_type = NULL), w), "tsibble")
+  expect_error(grafts_api(plumber2::api(doc_type = NULL), w), "widget")
 })
 
 test_that("an explorer is knitted and tagged as its widget", {
@@ -102,16 +102,16 @@ test_that("renderGrafts() takes an explorer", {
   expect_true(is.function(f))
 })
 
-test_that("grafts_save() takes an explorer, or data and grafts() arguments", {
+test_that("the delivery functions take an explorer, not data", {
   file <- tempfile(fileext = ".html")
-  grafts_save(grafts(small_agg(), value = z), file)
+  grafts_save(grafts(small_agg(), measure = z), file)
   expect_match(paste(readLines(file), collapse = "\n"), '"measure":"z"', fixed = TRUE)
-  grafts_save(small_agg(), file, value = z)
-  expect_match(paste(readLines(file), collapse = "\n"), '"measure":"z"', fixed = TRUE)
-  expect_error(grafts_save(grafts(small_agg()), file, value = z), "only apply when `x` is data")
+  expect_error(grafts_save(small_agg(), file), "grafts\\(data\\)")
+  expect_error(grafts_serve(small_agg()), "explorer made by")
+  expect_error(grafts_api(plumber2::api(doc_type = NULL), small_agg()), "explorer made by")
 })
 
 test_that("large payloads warn", {
-  expect_warning(check_payload_size(strrep("x", 11), max = 10), "api_grafts")
+  expect_warning(check_payload_size(strrep("x", 11), max = 10), "grafts_api")
   expect_no_warning(check_payload_size(strrep("x", 10), max = 10))
 })

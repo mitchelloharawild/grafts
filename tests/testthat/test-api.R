@@ -7,7 +7,7 @@ hit <- function(api, url) {
 }
 
 test_that("spec and series are served, privately cached and revalidated", {
-  api <- api_grafts(plumber2::api(doc_type = NULL), agg)
+  api <- grafts_api(plumber2::api(doc_type = NULL), grafts(agg))
   res <- hit(api, "/api/spec")
   expect_equal(res$status, 200L)
   expect_match(res$headers[["cache-control"]], "private")
@@ -20,7 +20,7 @@ test_that("spec and series are served, privately cached and revalidated", {
 })
 
 test_that("an unchanged response is a 304, and a changed one is not", {
-  api <- api_grafts(plumber2::api(doc_type = NULL), agg)
+  api <- grafts_api(plumber2::api(doc_type = NULL), grafts(agg))
   etag <- hit(api, "/api/series?ids=0")$headers[["etag"]]
   again <- function(url, tag) {
     api$test_request(fiery::fake_request(
@@ -32,7 +32,7 @@ test_that("an unchanged response is a 304, and a changed one is not", {
 })
 
 test_that("the font is served with the app, and no third party is called", {
-  api <- api_grafts(plumber2::api(doc_type = NULL), agg)
+  api <- grafts_api(plumber2::api(doc_type = NULL), grafts(agg))
   res <- hit(api, "/fonts/source-sans-3-400.woff2")
   expect_equal(res$status, 200L)
   expect_match(res$headers[["content-type"]], "font/woff2")
@@ -44,7 +44,7 @@ test_that("the font is served with the app, and no third party is called", {
 })
 
 test_that("a health route reports the series", {
-  api <- api_grafts(plumber2::api(doc_type = NULL), agg)
+  api <- grafts_api(plumber2::api(doc_type = NULL), grafts(agg))
   res <- hit(api, "/api/health")
   expect_equal(res$status, 200L)
   expect_equal(jsonlite::fromJSON(res$body)$status, "ok")
@@ -65,7 +65,7 @@ test_that("the serving port and host come from options and the environment", {
 })
 
 test_that("invalid requests are 400", {
-  api <- api_grafts(plumber2::api(doc_type = NULL), agg, max_ids = 2)
+  api <- grafts_api(plumber2::api(doc_type = NULL), grafts(agg), max_ids = 2)
   expect_equal(hit(api, "/api/series?ids=0,1,2")$status, 400L)
   expect_equal(hit(api, "/api/series?ids=0,1")$status, 200L)
   expect_equal(hit(api, "/api/series?measure=nope&ids=0")$status, 400L)
@@ -75,15 +75,15 @@ test_that("invalid requests are 400", {
 
 test_that("explorers mount at sub-paths", {
   api <- plumber2::api(doc_type = NULL) |>
-    api_grafts(agg, path = "tourism") |>
-    api_grafts(agg, path = "/retail/")
+    grafts_api(grafts(agg), path = "tourism") |>
+    grafts_api(grafts(agg), path = "/retail/")
   expect_equal(hit(api, "/tourism/api/spec")$status, 200L)
   expect_equal(hit(api, "/retail/api/series?ids=0")$status, 200L)
   expect_equal(hit(api, "/api/spec")$status, 404L)
 })
 
 test_that("the app's files are served, and the bare path redirects", {
-  api <- plumber2::api(doc_type = NULL) |> api_grafts(agg, path = "/tourism/")
+  api <- plumber2::api(doc_type = NULL) |> grafts_api(grafts(agg), path = "/tourism/")
   res <- hit(api, "/tourism/")
   expect_equal(res$status, 200L)
   expect_match(res$headers[["content-type"]], "text/html")
@@ -95,9 +95,9 @@ test_that("the app's files are served, and the bare path redirects", {
   expect_equal(res$headers[["location"]], "/tourism/")
 })
 
-test_that("api_grafts() takes an explorer, and reduces long series", {
+test_that("grafts_api() takes an explorer, and reduces long series", {
   x <- grafts(agg)
-  api <- api_grafts(plumber2::api(doc_type = NULL), x, max_points = 2)
+  api <- grafts_api(plumber2::api(doc_type = NULL), x, max_points = 2)
   s <- jsonlite::fromJSON(hit(api, "/api/series?ids=0")$body, simplifyVector = FALSE)
   expect_false(is.null(s[["0"]]$step))
   # The explorer itself keeps the default
@@ -124,7 +124,7 @@ test_that("static files are served under a sub-path", {
     small <- tsibble::tsibble(t = 1:4, k = "a", y = 1:4, index = t, key = k)
     agg <- fabletools::aggregate_key(small, k, y = sum(y))
     plumber2::api(port = port, doc_type = NULL) |>
-      api_grafts(agg, path = "/tourism/") |>
+      grafts_api(grafts(agg), path = "/tourism/") |>
       plumber2::api_run(block = TRUE, showcase = FALSE, silent = TRUE)
   }, list(pkg = testthat::test_path("../.."), port = port))
   withr::defer(bg$kill())
@@ -153,7 +153,7 @@ test_that("grafts_serve() serves until interrupted, then stops", {
     }
     small <- tsibble::tsibble(t = 1:4, k = "a", y = 1:4, index = t, key = k)
     agg <- fabletools::aggregate_key(small, k, y = sum(y))
-    grafts_serve(agg, port = port, launch = FALSE, block = TRUE)
+    grafts_serve(grafts(agg), port = port, launch = FALSE, block = TRUE)
     "returned"
   }, list(pkg = testthat::test_path("../.."), port = port), stderr = "2>&1")
   withr::defer(bg$kill())

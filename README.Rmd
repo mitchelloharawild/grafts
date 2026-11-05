@@ -89,14 +89,13 @@ series from different parts of the graph can be compared side by side.
 ## Deploying
 
 To serve the explorer from a server, add it to a plumber2 api with
-`api_grafts()`, which takes an explorer from `grafts()` or the data and
-arguments to make one. In a plumber2 file, such as for
+`grafts_api()`, which takes an explorer from `grafts()`. In a plumber2 file, such as for
 Posit Connect:
 
 ```{r deploy-file, eval = FALSE}
 #* @plumber
 function(api) {
-  api_grafts(api, readRDS("tourism_agg.rds"))
+  grafts_api(api, grafts(readRDS("tourism_agg.rds")))
 }
 ```
 
@@ -104,11 +103,12 @@ In Docker, listen on all interfaces:
 
 ```{r deploy-docker, eval = FALSE}
 readRDS("tourism_agg.rds") |>
-  grafts_serve(host = "0.0.0.0", port = 8000, launch = FALSE)
+  grafts() |>
+  grafts_serve(host = "0.0.0.0")
 ```
 
 Several explorers can share one api by giving each a `path`, such as
-`api_grafts(api, tourism_agg, path = "/tourism/")`.
+`grafts_api(api, grafts(tourism_agg), path = "/tourism/")`.
 
 ## Embedding
 
@@ -136,6 +136,6 @@ grafts(tourism_agg, options = grafts_options(
 ```
 
 Every series is written into the page, so large collections are better served
-from R, in the console or with `api_grafts()`. Embedded explorers use the system's UI font, unless the
+from R, in the console or with `grafts_api()`. Embedded explorers use the system's UI font, unless the
 page loads [Source Sans 3](https://fonts.google.com/specimen/Source+Sans+3) as
 the app does.
