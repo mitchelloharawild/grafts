@@ -12,3 +12,4 @@ small <- local({
 model_of <- function(data, ...) {
   explore_model(data, rlang::quo(NULL), NULL, c(80, 95), ...)
 }
+small_agg <- function() fabletools::aggregate_key(small, Purpose * (State / Region), y = sum(y), z = mean(y))

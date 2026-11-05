@@ -10,6 +10,7 @@
 \alias{grafts_theme}
 \alias{grafts_measure}
 \alias{grafts_reset}
+\alias{grafts_update}
 \title{Steer an explorer in Shiny}
 \usage{
 graftsProxy(outputId, session = shiny::getDefaultReactiveDomain())
@@ -27,6 +28,8 @@ grafts_theme(proxy, theme = c("system", "light", "dark"))
 grafts_measure(proxy, measure)
 
 grafts_reset(proxy)
+
+grafts_update(proxy, explorer)
 }
 \arguments{
 \item{outputId}{The id of the output, as given to \code{\link[=graftsOutput]{graftsOutput()}} in the
@@ -53,10 +56,12 @@ total of New South Wales, and \code{list()} the total of everything.}
 \item{theme}{\code{"system"}, \code{"light"} or \code{"dark"}.}
 
 \item{measure}{One of the data's numeric measured variables.}
+
+\item{explorer}{An explorer from \code{\link[=grafts]{grafts()}} with the new data.}
 }
 \description{
 \code{graftsProxy()} points at an explorer drawn by \code{\link[=renderGrafts]{renderGrafts()}}, to change
-what it shows from the server, without drawing it again. The
+what it shows or its data from the server, without drawing it again. The
 explorer reports what it shows back through inputs (see \code{\link[=graftsOutput]{graftsOutput()}}).
 }
 \details{
@@ -67,6 +72,10 @@ with no \code{keys} clears every pin.
 \item \code{grafts_view()} chooses the view and the set of series it draws.
 \item \code{grafts_theme()} and \code{grafts_measure()} choose the theme and measure.
 \item \code{grafts_reset()} returns the graph to the total.
+\item \code{grafts_update()} replaces the explorer's data. When the new data have
+the same series, the graph, focus, pins, views and layout stay as they
+were, so the visitor sees the numbers change. Otherwise the explorer
+starts again.
 }
 
 Each returns the proxy, invisibly, so that calls can be piped.
@@ -79,12 +88,17 @@ tourism_agg <- fabletools::aggregate_key(
 )
 ui <- fluidPage(
   actionButton("nsw", "New South Wales"),
+  actionButton("recent", "Last 10 years"),
   graftsOutput("ts")
 )
 server <- function(input, output, session) {
   output$ts <- renderGrafts(grafts(tourism_agg))
   observeEvent(input$nsw, {
     graftsProxy("ts") |> grafts_focus(list(State = "New South Wales"))
+  })
+  observeEvent(input$recent, {
+    recent <- tsibble::filter_index(tourism_agg, "2007 Q1" ~ .)
+    graftsProxy("ts") |> grafts_update(grafts(recent))
   })
 }
 shinyApp(ui, server)

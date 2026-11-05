@@ -23,7 +23,8 @@
 //
 // Embedded in an app (Shiny), an explorer reports what it shows through
 // opts.onChange(name, value) and takes commands from command(name, args), so
-// the app can follow and steer it.
+// the app can follow and steer it; snapshot() and opts.restore keep its state
+// while its data are replaced.
 //
 // render functions are pure functions of the state, and handlers only change
 // the state, so CSS transitions animate every change.
@@ -267,10 +268,12 @@
 
   // An explorer of `spec` in the element `root`, getting series from `source`.
   // `storageKey` names its saved theme and layout. `extra`: onChange, a
-  // function told what changed.
+  // function told what changed, and restore, a snapshot() of an explorer of
+  // the same structure whose state this one takes up.
   function Explorer(root, spec, source, storageKey, extra) {
     var self = this;
     extra = extra || {};
+    var restore = extra.restore;
     this.onChange = extra.onChange;
     this.sent = {};
     this.root = root;
@@ -280,7 +283,7 @@
     this.themeKey = THEME + ':' + storageKey;
     this.storeKey = STORE + ':' + storageKey;
     var o = this.options = readOptions(spec);
-    this.theme = (o.persist && (load(this.themeKey) || load(THEME))) || o.theme;
+    this.theme = (restore && restore.theme) || (o.persist && (load(this.themeKey) || load(THEME))) || o.theme;
     applyTheme(root, this.theme);
     this.P = readPalette(root);
     // Without chains, each key is its own
@@ -334,11 +337,43 @@
       if (typeof mine.overlayLog === 'boolean') u.overlayLog = mine.overlayLog;
     });
     this.size = saved.size || null;
+    if (restore) this.restoreFrom(restore);
     this.build();
+    if (restore && restore.cam) { this.cam = restore.cam; this.applyCam(); }
     this.render();
   }
 
   // ---- Embedding -------------------------------------------------------------
+
+  // What the explorer shows, to take up again in an explorer of the same
+  // structure but other values (see mount's `restore`)
+  Explorer.prototype.snapshot = function () {
+    var st = this.state, ui = this.ui;
+    return {
+      sig: this.sig, theme: this.theme, size: this.size, cam: this.cam,
+      state: {
+        focus: st.focus, last: st.last, showAll: st.showAll, pins: st.pins.slice(),
+        groups: st.groups.map(function (g) { return { key: g.key, parent: g.parent, eid: g.e.id, kids: g.kids, shared: g.shared }; })
+      },
+      ui: { measure: ui.measure, tab: ui.tab, set: ui.set, sets: ui.sets, models: ui.models, intervals: ui.intervals, cell: ui.cell }
+    };
+  };
+  Explorer.prototype.restoreFrom = function (r) {
+    var st = this.state, ui = this.ui, edges = this.spec.dims.edges, ids = this.series.length;
+    st.groups = r.state.groups.filter(function (g) { return edges[g.eid] && g.parent < ids; }).map(function (g) {
+      return { key: g.key, parent: g.parent, e: edges[g.eid], kids: g.kids, shared: g.shared };
+    });
+    st.focus = r.state.focus;
+    st.last = this.findGroup(r.state.last) ? r.state.last : null;
+    st.showAll = r.state.showAll;
+    st.pins = r.state.pins.filter(function (id) { return id < ids; });
+    ['tab', 'set', 'intervals', 'cell'].forEach(function (k) { if (r.ui[k] != null) ui[k] = r.ui[k]; });
+    if (this.spec.measures.indexOf(r.ui.measure) > -1) ui.measure = r.ui.measure;
+    Object.keys(ui.models).forEach(function (m) { if (r.ui.models[m] != null) ui.models[m] = r.ui.models[m]; });
+    Object.keys(ui.sets).forEach(function (k) { if (r.ui.sets[k]) ui.sets[k] = r.ui.sets[k]; });
+    if (!this.options.tabs.some(function (t) { return t[0] === ui.tab; })) ui.tab = this.options.view;
+    this.size = r.size;
+  };
 
   // The series with these keys (an object of key values, absent when
   // aggregated), or -1
@@ -1887,14 +1922,23 @@
   }
   // A storage key for a spec: a hash of its structure, keys, measures and
   // number of series, so other data on the same origin keep their own
-  function specKey(spec) {
-    var s = [spec.structure, spec.keys.join(','), spec.measures.join(','), spec.series.length].join('|'), h = 5381;
+  function hash(s) {
+    var h = 5381;
     for (var i = 0; i < s.length; i++) h = (h * 33 + s.charCodeAt(i)) | 0;
     return (h >>> 0).toString(36);
   }
+  function specKey(spec) {
+    return hash([spec.structure, spec.keys.join(','), spec.measures.join(','), spec.series.length].join('|'));
+  }
+  // Specs with the same signature have the same series and dimension graph,
+  // so one can take up another's state. Read before an explorer adds to the spec.
+  function signature(spec) {
+    return hash(JSON.stringify([spec.keys, spec.measures, spec.series, spec.dims]));
+  }
   // Draw an explorer in `node`. opts: source (remote() by default), height
-  // (px or a CSS length), storageKey and onChange (told what the explorer
-  // shows as it changes). Promises the explorer, or undefined
+  // (px or a CSS length), storageKey, onChange (told what the explorer shows
+  // as it changes) and restore (a snapshot() of an explorer of the same
+  // structure, taken up when the spec's signature matches). Promises the explorer, or undefined
   // when the spec can't be loaded, which the element then says.
   function mount(node, opts) {
     opts = opts || {};
@@ -1903,7 +1947,12 @@
     if (opts.height != null) node.style.height = typeof opts.height === 'number' ? opts.height + 'px' : opts.height;
     if (!node.firstChild) el('p', 'grafts-loading', node, 'Loading the series graph…');
     return source.spec()
-      .then(function (spec) { return new Explorer(node, spec, source, opts.storageKey || specKey(spec), { onChange: opts.onChange }); })
+      .then(function (spec) {
+        var sig = signature(spec), same = opts.restore && opts.restore.sig === sig;
+        var e = new Explorer(node, spec, source, opts.storageKey || specKey(spec), { onChange: opts.onChange, restore: same ? opts.restore : null });
+        e.sig = sig;
+        return e;
+      })
       .catch(function (err) {
         node.textContent = '';
         el('p', 'grafts-error', node, 'Could not load the series graph: ' + err.message);

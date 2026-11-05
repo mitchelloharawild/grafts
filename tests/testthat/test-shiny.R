@@ -53,6 +53,18 @@ test_that("commands go to the explorer's output, namespaced", {
   expect_error(grafts_focus(list(), list()), "graftsProxy")
 })
 
+test_that("an update sends the payload as JSON", {
+  s <- mock_session()
+  proxy <- graftsProxy("ts", session = s)
+  grafts_update(proxy, grafts(small_agg()))
+  msg <- s$sent()[[1]]$message
+  expect_equal(msg$cmd, "update")
+  expect_s3_class(msg$args$payload, "json")
+  p <- jsonlite::fromJSON(msg$args$payload, simplifyVector = FALSE)
+  expect_named(p, c("spec", "series"))
+  expect_error(grafts_update(proxy, small_agg()), "grafts")
+})
+
 test_that("input handlers make data frames of series and vectors of names", {
   skip_if_not_installed("shiny")
   register_input_handlers()

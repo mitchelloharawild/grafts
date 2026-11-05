@@ -1,4 +1,3 @@
-small_agg <- function() fabletools::aggregate_key(small, Purpose * (State / Region), y = sum(y), z = mean(y))
 
 test_that("the payload has every series of every measure, at full length", {
   m <- explore_model(small_agg(), rlang::quo(NULL), NULL, c(80, 95), grafts_options(max_points = 2))

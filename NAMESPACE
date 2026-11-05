@@ -18,6 +18,7 @@ export(grafts_save)
 export(grafts_serve)
 export(grafts_theme)
 export(grafts_unpin)
+export(grafts_update)
 export(grafts_view)
 export(renderGrafts)
 importFrom(purrr,

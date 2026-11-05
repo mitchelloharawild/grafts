@@ -1,6 +1,7 @@
 # The explorer in Shiny. renderGrafts() shows an explorer from grafts(), with
 # every series written into the page; the widget tells the app what it shows
-# (the inputs <id>_focus and so on), and graftsProxy() steers it.
+# (the inputs <id>_focus and so on), and graftsProxy() steers it and replaces
+# its data without drawing it again.
 
 #' Shiny bindings for grafts()
 #'
@@ -67,7 +68,7 @@ renderGrafts <- function(expr, env = parent.frame(), quoted = FALSE) {
 #' Steer an explorer in Shiny
 #'
 #' `graftsProxy()` points at an explorer drawn by [renderGrafts()], to change
-#' what it shows from the server, without drawing it again. The
+#' what it shows or its data from the server, without drawing it again. The
 #' explorer reports what it shows back through inputs (see [graftsOutput()]).
 #'
 #' * `grafts_focus()` focuses a series, drawing the splits that reach it.
@@ -76,6 +77,10 @@ renderGrafts <- function(expr, env = parent.frame(), quoted = FALSE) {
 #' * `grafts_view()` chooses the view and the set of series it draws.
 #' * `grafts_theme()` and `grafts_measure()` choose the theme and measure.
 #' * `grafts_reset()` returns the graph to the total.
+#' * `grafts_update()` replaces the explorer's data. When the new data have
+#'   the same series, the graph, focus, pins, views and layout stay as they
+#'   were, so the visitor sees the numbers change. Otherwise the explorer
+#'   starts again.
 #'
 #' Each returns the proxy, invisibly, so that calls can be piped.
 #'
@@ -92,6 +97,7 @@ renderGrafts <- function(expr, env = parent.frame(), quoted = FALSE) {
 #'   `"pinned"` series.
 #' @param theme `"system"`, `"light"` or `"dark"`.
 #' @param measure One of the data's numeric measured variables.
+#' @param explorer An explorer from [grafts()] with the new data.
 #' @param outputId The id of the output, as given to [graftsOutput()] in the
 #'   same module or app.
 #' @param session The Shiny session, by default the one running the server.
@@ -103,12 +109,17 @@ renderGrafts <- function(expr, env = parent.frame(), quoted = FALSE) {
 #' )
 #' ui <- fluidPage(
 #'   actionButton("nsw", "New South Wales"),
+#'   actionButton("recent", "Last 10 years"),
 #'   graftsOutput("ts")
 #' )
 #' server <- function(input, output, session) {
 #'   output$ts <- renderGrafts(grafts(tourism_agg))
 #'   observeEvent(input$nsw, {
 #'     graftsProxy("ts") |> grafts_focus(list(State = "New South Wales"))
+#'   })
+#'   observeEvent(input$recent, {
+#'     recent <- tsibble::filter_index(tourism_agg, "2007 Q1" ~ .)
+#'     graftsProxy("ts") |> grafts_update(grafts(recent))
 #'   })
 #' }
 #' shinyApp(ui, server)
@@ -164,6 +175,15 @@ grafts_measure <- function(proxy, measure) {
 #' @rdname grafts-proxy
 #' @export
 grafts_reset <- function(proxy) proxy_send(proxy, "reset", list())
+
+#' @rdname grafts-proxy
+#' @export
+grafts_update <- function(proxy, explorer) {
+  explorer <- check_explorer(explorer)
+  payload <- explore_payload(explorer$model)
+  check_payload_size(payload)
+  proxy_send(proxy, "update", list(payload = structure(payload, class = "json")))
+}
 
 proxy_send <- function(proxy, cmd, args) {
   if (!inherits(proxy, "grafts_proxy")) abort("`proxy` must be made by `graftsProxy()`.")
