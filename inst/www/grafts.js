@@ -118,6 +118,11 @@
     if (text != null) e.textContent = text;
     return e;
   }
+  function button(cls, parent, text) {
+    var b = el('button', cls, parent, text);
+    b.type = 'button';
+    return b;
+  }
   function svgEl(tag, parent, attrs) {
     var e = document.createElementNS(SVGNS, tag);
     for (var k in attrs || {}) if (attrs[k] != null) e.setAttribute(k, attrs[k]);
@@ -695,35 +700,23 @@
 
   // ---- Build -----------------------------------------------------------------
 
-  Explorer.prototype.build = function () {
-    var self = this, spec = this.spec, root = this.root;
-    root.textContent = '';
-
-    // Columns
-    var main = this.main = el('div', 'grafts-main', root);
-    var left = el('div', 'grafts-col grafts-left', main);
-    var colSplit = el('div', 'grafts-split grafts-split-col', main);
-    var right = el('div', 'grafts-col grafts-right', main);
-
-    // The series graph, with the layout and theme buttons in its header and
-    // the count of series drawn in a corner
+  // The series graph, with the layout and theme buttons in its header
+  Explorer.prototype.buildGraph = function (left) {
+    var self = this;
     var gp = el('section', 'grafts-pane grafts-graph-pane', left);
     var gh = el('div', 'grafts-pane-head', gp, 'Series graph');
     var tools = el('div', 'grafts-tools', gh);
-    var help = el('button', 'grafts-btn grafts-icon', tools, '?');
-    help.type = 'button';
+    var help = button('grafts-btn grafts-icon', tools, '?');
     help.title = 'Shortcuts';
     help.setAttribute('aria-label', 'Shortcuts');
     help.setAttribute('aria-expanded', 'false');
     help.addEventListener('click', function () { self.toggleHelp(); });
-    var reset = el('button', 'grafts-btn grafts-icon', tools);
-    reset.type = 'button';
+    var reset = button('grafts-btn grafts-icon', tools);
     reset.title = 'Reset layout';
     reset.setAttribute('aria-label', 'Reset layout');
     icon(reset, 'reset');
     reset.addEventListener('click', function () { self.size = null; self.persist(); self.applySize(); });
-    var theme = this.themeBtn = el('button', 'grafts-btn grafts-icon', tools);
-    theme.type = 'button';
+    var theme = this.themeBtn = button('grafts-btn grafts-icon', tools);
     theme.addEventListener('click', function () {
       var i = THEMES.map(function (x) { return x[0]; }).indexOf(self.theme);
       self.setTheme(THEMES[(i + 1) % THEMES.length][0]);
@@ -744,15 +737,16 @@
     var zoom = el('div', 'grafts-zoom', this.graph);
     [['+', 'Zoom in', function () { self.zoomBy(1.25); }], ['−', 'Zoom out', function () { self.zoomBy(0.8); }],
       ['⤢', 'Reset view', function () { self.resetCam(); }]].forEach(function (z) {
-      var b = el('button', 'grafts-btn', zoom, z[0]);
-      b.type = 'button';
+      var b = button('grafts-btn', zoom, z[0]);
       b.title = z[1];
       b.setAttribute('aria-label', z[1]);
       b.addEventListener('click', z[2]);
     });
+  };
 
-    // The dimension graph, headed by the structure
-    var dimSplit = el('div', 'grafts-split grafts-split-row', left);
+  // The dimension graph, headed by the structure
+  Explorer.prototype.buildDims = function (left) {
+    var self = this, spec = this.spec;
     var dp = el('section', 'grafts-pane', left);
     var dh = el('div', 'grafts-pane-head', dp);
     var structure = el('div', 'grafts-structure', dh);
@@ -765,9 +759,12 @@
     });
     var db = this.dimsBody = el('div', 'grafts-pane-body grafts-dims-body', dp);
     this.dimsSvg = svgEl('svg', db, { class: 'grafts-dims-svg', role: 'img', 'aria-label': 'Dimension graph' });
+  };
 
-    // The focused series, headed by the measure and the forecast models,
-    // whose chips are their legend and switches
+  // The focused series, headed by the measure and the forecast models,
+  // whose chips are their legend and switches
+  Explorer.prototype.buildFocus = function (right) {
+    var self = this, spec = this.spec;
     var fp = this.focusPane = el('section', 'grafts-pane grafts-focus-pane', right);
     var fh = el('div', 'grafts-pane-head', fp);
     if (spec.measures.length > 1) {
@@ -784,8 +781,7 @@
     if (this.fc) {
       var models = this.modelsEl = el('div', 'grafts-models', fh);
       this.modelBtns = this.fc.models.map(function (m, i) {
-        var b = el('button', 'grafts-model', models);
-        b.type = 'button';
+        var b = button('grafts-model', models);
         b.title = m + ' forecasts of ' + self.fc.measure;
         b.style.color = self.modelCol(i);
         el('span', 'grafts-model-key', b);
@@ -793,15 +789,18 @@
         b.addEventListener('click', function () { self.ui.models[m] = !self.ui.models[m]; self.renderControls(); self.renderRight(); });
         return { b: b, m: m };
       });
-      var iv = this.intervalBtn = el('button', 'grafts-model grafts-iv', models);
-      iv.type = 'button';
+      var iv = this.intervalBtn = button('grafts-model grafts-iv', models);
       iv.title = 'Forecast intervals';
       el('span', 'grafts-iv-key', iv);
       el('span', null, iv, spec.forecast.level.join('/') + '%');
       iv.addEventListener('click', function () { self.ui.intervals = !self.ui.intervals; self.persist(); self.renderControls(); self.renderRight(); });
     }
     this.focusBody = el('div', 'grafts-pane-body', fp);
-    var focusSplit = el('div', 'grafts-split grafts-split-row', right);
+  };
+
+  // The view of the series, headed by its controls
+  Explorer.prototype.buildView = function (right) {
+    var self = this, spec = this.spec;
     var vp = el('section', 'grafts-pane', right);
     var vh = el('div', 'grafts-pane-head', vp);
     // Which series the view draws. Disabled buttons stay focusable and keep
@@ -810,8 +809,7 @@
     sets.setAttribute('role', 'group');
     sets.setAttribute('aria-label', 'Series to draw');
     this.setBtns = ['children', 'pinned'].map(function (v) {
-      var b = el('button', null, sets);
-      b.type = 'button';
+      var b = button(null, sets);
       b.addEventListener('click', function () {
         if (b.getAttribute('aria-disabled') === 'true') return;
         self.ui.set = v; self.persist(); self.renderRight();
@@ -822,8 +820,7 @@
     var tabs = el('div', 'grafts-tabs', vh);
     tabs.setAttribute('role', 'tablist');
     this.tabBtns = this.options.tabs.map(function (t) {
-      var b = el('button', null, tabs, t[1]);
-      b.type = 'button';
+      var b = button(null, tabs, t[1]);
       b.setAttribute('role', 'tab');
       b.addEventListener('click', function () {
         if (b.getAttribute('aria-disabled') === 'true') return;
@@ -852,13 +849,32 @@
     var slider = el('input', null, size);
     slider.type = 'range'; slider.min = 120; slider.max = 420; slider.step = 10; slider.value = this.ui.cell;
     slider.addEventListener('input', function () { self.ui.cell = +slider.value; self.persist(); self.renderRight(); });
-    var pinAll = this.pinAllBtn = el('button', 'grafts-btn grafts-pin-all', end);
-    pinAll.type = 'button';
+    var pinAll = this.pinAllBtn = button('grafts-btn grafts-pin-all', end);
     pinAll.addEventListener('click', function () {
       var g = self.focusGroup();
       if (g) self.setPins(g.kids, !self.allPinned(g));
     });
     this.view = el('div', 'grafts-pane-body grafts-view', vp);
+  };
+
+  Explorer.prototype.build = function () {
+    var self = this, spec = this.spec, root = this.root;
+    root.textContent = '';
+
+    // Columns
+    var main = this.main = el('div', 'grafts-main', root);
+    var left = el('div', 'grafts-col grafts-left', main);
+    var colSplit = el('div', 'grafts-split grafts-split-col', main);
+    var right = el('div', 'grafts-col grafts-right', main);
+
+    this.buildGraph(left);
+
+    var dimSplit = el('div', 'grafts-split grafts-split-row', left);
+    this.buildDims(left);
+
+    this.buildFocus(right);
+    var focusSplit = el('div', 'grafts-split grafts-split-row', right);
+    this.buildView(right);
 
     // Splitters: drag to resize, double-click to reset that pane
     var mainBox = function () { return main.getBoundingClientRect(); };
@@ -870,14 +886,12 @@
     this.panZoom();
 
     this.layer.addEventListener('click', function () {
-      if (self.helpOpen) self.toggleHelp(false);
-      if (self.state.menu != null) { self.state.menu = null; self.renderGraph(); self.renderDims(); }
+      self.dismiss();
     });
     // Escape closes the menu and help of the explorer in use: holding focus or under the pointer
     this.listen(document, 'keydown', function (ev) {
       if (ev.key !== 'Escape' || !(root.contains(document.activeElement) || root.matches(':hover'))) return;
-      if (self.helpOpen) self.toggleHelp(false);
-      if (self.state.menu != null) { self.state.menu = null; self.renderGraph(); self.renderDims(); }
+      self.dismiss();
     });
     // Leaving a plot clears its hover
     right.addEventListener('mouseover', function (ev) {
@@ -905,6 +919,12 @@
     this.chipHover = null;
   };
 
+  // Close the help card and any open node menu
+  Explorer.prototype.dismiss = function () {
+    if (this.helpOpen) this.toggleHelp(false);
+    if (this.state.menu != null) { this.state.menu = null; this.renderGraph(); this.renderDims(); }
+  };
+
   // Listeners outside the explorer's element, removed by destroy()
   Explorer.prototype.listen = function (target, type, f) {
     target.addEventListener(type, f);
@@ -925,8 +945,7 @@
     seg.setAttribute('role', 'group');
     seg.setAttribute('aria-label', label);
     var btns = opts.map(function (o) {
-      var b = el('button', null, seg, o[1]);
-      b.type = 'button';
+      var b = button(null, seg, o[1]);
       b.addEventListener('click', function () { set(o[0]); sync(); });
       return { b: b, v: o[0] };
     });
@@ -1084,8 +1103,7 @@
 
   Explorer.prototype.makeNode = function (id) {
     var self = this, s = this.series[id];
-    var b = el('button', 'grafts-node', this.world);
-    b.type = 'button';
+    var b = button('grafts-node', this.world);
     b.title = this.fullLabel(s);
     b.setAttribute('aria-label', this.fullLabel(s));
     var ring = el('div', 'grafts-ring', b);
@@ -1305,8 +1323,7 @@
     if (!splits.length) el('span', 'grafts-tag', menu, 'no further split');
     splits.forEach(function (e) {
       var done = !!self.findGroup(s.id + '~' + e.id), n = self.children(s, e).length;
-      var c = el('button', 'grafts-chip' + (done ? ' grafts-done' : ''), menu);
-      c.type = 'button';
+      var c = button('grafts-chip' + (done ? ' grafts-done' : ''), menu);
       c.disabled = !n;
       css(el('span', 'grafts-key', c), { color: e.col });
       el('span', null, c, e.name);
@@ -1619,8 +1636,7 @@
       c.addEventListener('click', function (ev) { if (!ev.target.closest('.grafts-pin')) self.focusOn(id); });
       var chd = el('div', 'grafts-cell-head', c);
       css(el('span', 'grafts-swatch', chd), { background: self.level(k.depth) });
-      var label = el('button', 'grafts-cell-label', chd, self.memberLabel(id, g));
-      label.type = 'button';
+      var label = button('grafts-cell-label', chd, self.memberLabel(id, g));
       label.title = self.fullLabel(k);
       label.setAttribute('aria-label', 'Focus ' + self.fullLabel(k));
       if (shares[i] != null) self.shareBar(chd, shares[i], g.parent);
@@ -1631,8 +1647,7 @@
         second.setAttribute('aria-label', 'Second parent');
         icon(second, 'fork');
       }
-      var on = self.state.pins.indexOf(id) > -1, pin = el('button', 'grafts-pin', chd, '📌');
-      pin.type = 'button';
+      var on = self.state.pins.indexOf(id) > -1, pin = button('grafts-pin', chd, '📌');
       pin.setAttribute('aria-pressed', String(on));
       pin.setAttribute('aria-label', (on ? 'Unpin ' : 'Pin ') + self.fullLabel(k));
       pin.title = on ? 'Unpin' : 'Pin';
