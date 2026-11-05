@@ -66,9 +66,8 @@ grafts_api <- function(api, explorer, path = "/", max_ids = 1000) {
   # responses are cached privately (a shared cache could serve one visitor's
   # data to another), and revalidated with an ETag of the data and request: a
   # redeploy is seen at once, and an unchanged series costs a 304.
-  version <- rlang::hash(list(model$spec, model$values, model$fc, model$max_points))
   fresh <- function(request, response, what) {
-    etag <- paste0("\"", rlang::hash(list(version, what)), "\"")
+    etag <- paste0("\"", rlang::hash(list(model$version, what)), "\"")
     response$set_header("Cache-Control", "private, no-cache")
     response$set_header("ETag", etag)
     if (identical(request$get_header("If-None-Match"), etag)) {
@@ -97,31 +96,13 @@ grafts_api <- function(api, explorer, path = "/", max_ids = 1000) {
 
   # The app's files, as routes rather than plumber2 statics, which can't be
   # added once a server runs
-  www <- system.file("www", package = "grafts")
-  files <- list(
-    list(route = path, file = "index.html", type = "text/html"),
-    list(route = paste0(path, "grafts.js"), file = "grafts.js", type = "text/javascript"),
-    list(route = paste0(path, "grafts.css"), file = "grafts.css", type = "text/css")
-  )
+  api <- static_route(api, path, "index.html", "text/html", title = title)
+  api <- static_route(api, paste0(path, "grafts.js"), "grafts.js", "text/javascript")
+  api <- static_route(api, paste0(path, "grafts.css"), "grafts.css", "text/css")
   # The font is binary, and served from the app so that no third party is called
   for (w in c(400, 600, 700)) {
     file <- paste0("fonts/source-sans-3-", w, ".woff2")
-    files <- c(files, list(list(
-      route = paste0(path, file), file = file, type = "font/woff2", binary = TRUE
-    )))
-  }
-  for (f in files) {
-    body <- if (isTRUE(f$binary)) read_bytes(file.path(www, f$file)) else read_text(file.path(www, f$file))
-    if (f$file == "index.html") {
-      body <- sub("<title>Graph explorer</title>", paste0("<title>", escape_html(title), "</title>"), body, fixed = TRUE)
-    }
-    api <- plumber2::api_get(
-      api, f$route, local({
-        body <- body
-        function() body
-      }),
-      serializers = set_names(list(identity), f$type)
-    )
+    api <- static_route(api, paste0(path, file), file, "font/woff2", binary = TRUE)
   }
   # The page's urls are relative, so it must be opened at the trailing slash.
   # The redirect is relative too, so it stays inside a prefix that a proxy
@@ -130,6 +111,26 @@ grafts_api <- function(api, explorer, path = "/", max_ids = 1000) {
 
   attr(api, "grafts_n") <- model$n
   api
+}
+
+# Adds one route that serves a file of the app (in inst/www) as it is read
+# once per process. The page's title is set for the explorer.
+static_route <- function(api, route, file, type, binary = FALSE, title = NULL) {
+  body <- www_file(file, binary)
+  if (!is.null(title)) {
+    body <- sub("<title>Graph explorer</title>", paste0("<title>", escape_html(title), "</title>"), body, fixed = TRUE)
+  }
+  plumber2::api_get(api, route, function() body, serializers = set_names(list(identity), type))
+}
+
+# The app's files, read once per process
+www_cache <- new.env(parent = emptyenv())
+www_file <- function(file, binary = FALSE) {
+  if (is.null(www_cache[[file]])) {
+    path <- file.path(system.file("www", package = "grafts"), file)
+    www_cache[[file]] <- if (binary) read_bytes(path) else read_text(path)
+  }
+  www_cache[[file]]
 }
 
 #' @rdname grafts_api

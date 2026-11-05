@@ -1,3 +1,6 @@
+# The views the explorer can offer
+grafts_views <- c("grid", "overlay", "stacked", "season")
+
 #' Options for the explorer
 #'
 #' Chooses which views the explorer offers, how it starts, how its data are
@@ -54,8 +57,7 @@ grafts_options <- function(views = c("grid", "overlay", "stacked", "season"),
                            width = NULL, height = NULL, element_id = NULL,
                            title = "Graph explorer") {
   explicit <- !missing(views)
-  views <- arg_match(views, c("grid", "overlay", "stacked", "season"), multiple = TRUE)
-  views <- unique(views)
+  views <- unique(arg_match(views, grafts_views, multiple = TRUE))
   if (!length(views)) abort("`views` must name at least one view.")
   check_flag(additive, null = TRUE)
   if (!(is.null(season) || isFALSE(season) || is_string(season))) {
@@ -63,9 +65,7 @@ grafts_options <- function(views = c("grid", "overlay", "stacked", "season"),
   }
   theme <- arg_match(theme)
   check_flag(persist)
-  if (!(is.numeric(max_points) && length(max_points) == 1 && !is.na(max_points) && max_points >= 2)) {
-    abort("`max_points` must be a number, at least 2.")
-  }
+  if (!is_number(max_points) || max_points < 2) abort("`max_points` must be a number, at least 2.")
   check_size(width)
   check_size(height)
   if (!is_string(title)) abort("`title` must be a string.")
@@ -79,11 +79,13 @@ grafts_options <- function(views = c("grid", "overlay", "stacked", "season"),
   )
 }
 
-is_string <- function(x) is.character(x) && length(x) == 1 && !is.na(x)
+is_scalar <- function(x, test) test(x) && length(x) == 1 && !is.na(x)
+is_string <- function(x) is_scalar(x, is.character)
+is_number <- function(x) is_scalar(x, is.numeric)
 
 check_flag <- function(x, null = FALSE, arg = rlang::caller_arg(x), call = rlang::caller_env()) {
   if (null && is.null(x)) return(invisible(x))
-  if (!(is.logical(x) && length(x) == 1 && !is.na(x))) {
+  if (!is_scalar(x, is.logical)) {
     abort(paste0("`", arg, "` must be `TRUE` or `FALSE`", if (null) " or `NULL`", "."), call = call)
   }
   invisible(x)
@@ -91,7 +93,7 @@ check_flag <- function(x, null = FALSE, arg = rlang::caller_arg(x), call = rlang
 
 # A size in pixels, or as a CSS length
 check_size <- function(x, arg = rlang::caller_arg(x), call = rlang::caller_env()) {
-  if (!(is.null(x) || (is.numeric(x) && length(x) == 1 && !is.na(x) && x > 0) || is_string(x))) {
+  if (!(is.null(x) || (is_number(x) && x > 0) || is_string(x))) {
     abort(paste0("`", arg, "` must be `NULL`, a number of pixels or a CSS length."), call = call)
   }
   invisible(x)
@@ -137,8 +139,8 @@ is_additive <- function(values, s, fixed, combos, edges, tol = 1e-6) {
     par <- which(pat == cpat[e$from + 1L])
     kid <- which(pat == cpat[e$to + 1L])
     # The Total fixes no keys, so every series is its child
-    id <- function(r) if (length(cols)) do.call(paste, c(unname(as.list(s[r, cols, drop = FALSE])), sep = "\r")) else rep("", length(r))
-    g <- match(id(kid), id(par))
+    id <- if (length(cols)) vctrs::vec_group_id(vctrs::vec_slice(s[cols], c(par, kid))) else rep(1L, length(par) + length(kid))
+    g <- match(id[length(par) + seq_along(kid)], id[seq_along(par)])
     ok <- !is.na(g)
     kid <- kid[ok]; g <- g[ok]
     if (!length(kid)) next

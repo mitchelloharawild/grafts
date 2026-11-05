@@ -14,25 +14,21 @@ season_info <- function(grid, data, season = NULL) {
   if (!length(p)) return(NULL)
   name <- season %||% if ("year" %in% names(p)) "year" else names(p)[[1]]
   d <- tryCatch(as.Date(grid), error = function(e) NULL)
-  if (!is.null(d) && name == "year") {
-    if (inherits(grid, "yearquarter")) {
-      pos <- lubridate::quarter(d); labs <- paste0("Q", 1:4)
-    } else if (inherits(grid, "yearmonth")) {
-      pos <- lubridate::month(d); labs <- month.abb
-    } else if (inherits(grid, "yearweek")) {
-      pos <- lubridate::isoweek(d); labs <- NULL
-    } else {
-      pos <- lubridate::yday(d); labs <- NULL
-    }
-    cycle <- if (inherits(grid, "yearweek")) lubridate::isoyear(d) else lubridate::year(d)
-  } else if (!is.null(d) && name == "week" && inherits(grid, "Date")) {
-    pos <- lubridate::wday(d, week_start = 1); labs <- c("Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun")
-    cycle <- format(lubridate::floor_date(d, "week", week_start = 1))
-  } else {
-    m <- round(p[[name]])
-    pos <- (seq_along(grid) - 1L) %% m + 1L; labs <- NULL
-    cycle <- (seq_along(grid) - 1L) %/% m + 1L
+  week <- c("Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun")
+  s <- if (is.null(d)) NULL else if (name == "year") {
+    if (inherits(grid, "yearquarter")) list(lubridate::quarter(d), paste0("Q", 1:4), lubridate::year(d))
+    else if (inherits(grid, "yearmonth")) list(lubridate::month(d), month.abb, lubridate::year(d))
+    else if (inherits(grid, "yearweek")) list(lubridate::isoweek(d), NULL, lubridate::isoyear(d))
+    else list(lubridate::yday(d), NULL, lubridate::year(d))
+  } else if (name == "week" && inherits(grid, "Date")) {
+    list(lubridate::wday(d, week_start = 1), week, format(lubridate::floor_date(d, "week", week_start = 1)))
   }
+  if (is.null(s)) {
+    m <- round(p[[name]])
+    i <- seq_along(grid) - 1L
+    s <- list(i %% m + 1L, NULL, i %/% m + 1L)
+  }
+  pos <- s[[1]]; labs <- s[[2]]; cycle <- s[[3]]
   list(name = name, period = max(pos), pos = I(pos), cycle = I(as.character(cycle)), labels = if (length(labs)) I(labs))
 }
 

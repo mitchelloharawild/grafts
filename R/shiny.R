@@ -165,7 +165,7 @@ grafts_unpin <- function(proxy, keys = NULL) {
 #' @rdname grafts-proxy
 #' @export
 grafts_view <- function(proxy, view = NULL, set = NULL) {
-  if (!is.null(view)) view <- arg_match(view, c("grid", "overlay", "stacked", "season"))
+  if (!is.null(view)) view <- arg_match(view, grafts_views)
   if (!is.null(set)) set <- arg_match(set, c("children", "pinned"))
   proxy_send(proxy, "view", list(view = view, set = set))
 }
@@ -226,7 +226,6 @@ key_rows <- function(keys, call = rlang::caller_env()) {
 # series from the {keys, rows} the explorer sends, and a character vector
 # from a list of names
 register_input_handlers <- function() {
-  if (isTRUE(.shiny$handlers)) return(invisible())
   shiny::registerInputHandler("grafts.series", function(x, session, name) {
     keys <- as.character(unlist(x$keys))
     cols <- lapply(seq_along(keys), function(j) {
@@ -237,12 +236,14 @@ register_input_handlers <- function() {
   shiny::registerInputHandler("grafts.names", function(x, session, name) {
     as.character(unlist(x))
   }, force = TRUE)
-  .shiny$handlers <- TRUE
   invisible()
 }
-.shiny <- new.env(parent = emptyenv())
 
 # ---- Data --------------------------------------------------------------------
+
+# Data with more values than this are served through the session, not written
+# into the page (the 250,000 in the docs of `lazy`)
+lazy_threshold <- 2.5e5
 
 # The JSON the widget reads: the structure and every series, or the structure
 # and the url that the session serves series from. `lazy` defaults to data too
@@ -250,7 +251,7 @@ register_input_handlers <- function() {
 shiny_payload <- function(x, lazy = NULL, session = shiny::getDefaultReactiveDomain()) {
   model <- x$model
   if (!(is.null(lazy) || isTRUE(lazy) || isFALSE(lazy))) abort("`lazy` must be `NULL`, `TRUE` or `FALSE`.")
-  lazy <- lazy %||% (sum(lengths(model$values)) > 2.5e5)
+  lazy <- lazy %||% (sum(lengths(model$values)) > lazy_threshold)
   if (lazy && !is.null(session)) {
     url <- shiny_data(model, session)
     return(escape_json(to_json(list(spec = model$spec, url = url))))
@@ -264,7 +265,7 @@ shiny_payload <- function(x, lazy = NULL, session = shiny::getDefaultReactiveDom
 # and return the url (which already has a query) that asks for them. The same
 # data keep the same name, so drawing them again doesn't register them again.
 shiny_data <- function(model, session, max_ids = 1000) {
-  name <- paste0("grafts-", substr(rlang::hash(list(model$spec, model$values, model$fc, model$max_points)), 1, 16))
+  name <- paste0("grafts-", substr(model$version, 1, 16))
   session$registerDataObj(name, model, function(data, req) {
     query <- shiny::parseQueryString(req$QUERY_STRING)
     q <- series_query(data, query, max_ids)

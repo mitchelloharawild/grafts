@@ -37,28 +37,14 @@ grafts_save <- function(explorer, file, self_contained = TRUE) {
   json <- explore_payload(x$model)
   check_payload_size(json)
   www <- system.file("www", package = "grafts")
-  page <- function(head, body) {
-    c(
-      "<!doctype html>", "<html lang=\"en\">", "<head>", "<meta charset=\"utf-8\">",
-      "<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">",
-      paste0("<title>", escape_html(x$options$title), "</title>"), head,
-      "<style>",
-      "  html, body { margin: 0; background: #F6F7F9; }",
-      "  @media (prefers-color-scheme: dark) { html, body { background: #0F1115; } }",
-      paste0("  body > .grafts-root { height: ", css_length(x$options$height, "100vh"), "; }"),
-      "</style>", "</head>", "<body>", "<div id=\"grafts-root\" class=\"grafts-root\"></div>", body, "</body>", "</html>"
-    )
-  }
-  mount <- function(source) {
-    c("<script>", paste0("  Grafts.mount(document.getElementById('grafts-root'), { source: Grafts.inline(", source, ") });"), "</script>")
-  }
   if (self_contained) {
-    html <- page(
+    html <- page_html(
+      x$options,
       c("<style>", read_text(file.path(www, "grafts.css")), "</style>"),
       c(
         paste0("<script type=\"application/json\" id=\"grafts-data\">", json, "</script>"),
         "<script>", escape_script(read_text(file.path(www, "grafts.js"))), "</script>",
-        mount("document.getElementById('grafts-data').textContent")
+        page_mount("document.getElementById('grafts-data').textContent")
       )
     )
   } else {
@@ -66,16 +52,36 @@ grafts_save <- function(explorer, file, self_contained = TRUE) {
     file.copy(file.path(www, c("grafts.js", "grafts.css")), dir, overwrite = TRUE)
     data_file <- paste0(tools::file_path_sans_ext(basename(file)), "-data.json")
     write_text(json, file.path(dir, data_file))
-    html <- page(
+    fetch <- paste0("fetch(", to_json(utils::URLencode(data_file, reserved = TRUE)), ").then(function (r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })")
+    html <- page_html(
+      x$options,
       "<link rel=\"stylesheet\" href=\"grafts.css\">",
-      c(
-        "<script src=\"grafts.js\"></script>",
-        mount(paste0("fetch(", to_json(utils::URLencode(data_file, reserved = TRUE)), ").then(function (r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })"))
-      )
+      c("<script src=\"grafts.js\"></script>", page_mount(fetch))
     )
   }
   write_text(html, file)
   invisible(file)
+}
+
+# The page's lines, around `head` (extra lines for the <head>) and `body` (lines
+# after the explorer's root element)
+page_html <- function(options, head, body) {
+  c(
+    "<!doctype html>", "<html lang=\"en\">", "<head>", "<meta charset=\"utf-8\">",
+    "<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">",
+    paste0("<title>", escape_html(options$title), "</title>"), head,
+    "<style>",
+    "  html, body { margin: 0; background: #F6F7F9; }",
+    "  @media (prefers-color-scheme: dark) { html, body { background: #0F1115; } }",
+    paste0("  body > .grafts-root { height: ", css_length(options$height, "100vh"), "; }"),
+    "</style>", "</head>", "<body>", "<div id=\"grafts-root\" class=\"grafts-root\"></div>", body, "</body>", "</html>"
+  )
+}
+
+# The script that mounts the explorer on JavaScript `source` (an expression for
+# the payload, or a promise of it)
+page_mount <- function(source) {
+  c("<script>", paste0("  Grafts.mount(document.getElementById('grafts-root'), { source: Grafts.inline(", source, ") });"), "</script>")
 }
 
 # The htmlwidget of an explorer, as knitted or rendered in Shiny. `payload` is

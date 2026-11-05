@@ -1,5 +1,5 @@
 # Logical rows of fixed keys as strings, for matching
-pattern <- function(m) apply(m, 1, function(r) paste(as.integer(r), collapse = ""))
+pattern <- function(m) do.call(paste0, lapply(seq_len(ncol(m)), function(j) as.integer(m[, j])))
 
 # The chains of nested keys that the combinations cross, e.g.
 # Purpose * (State / Region) -> list("Purpose", c("State", "Region")), or NULL

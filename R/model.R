@@ -65,7 +65,18 @@ explore_model <- function(data, measure, forecasts, level, options = grafts_opti
     series = map(seq_len(nrow(s)), function(i) unname(as.list(s[i, keys]))),
     forecast = if (!is.null(fc)) list(measure = fc$measure, models = I(fc$models), level = I(level))
   )
-  list(spec = spec, n = nrow(s), values = values, fc = fc, max_points = options$max_points)
+  # Per-series values rounded once, with each series' last observation and total
+  rounded <- map(values, signif, digits = 6)
+  last <- map(values, function(v) {
+    seen <- !is.na(v)
+    max.col(seen, ties.method = "last") * (rowSums(seen) > 0)
+  })
+  sums <- map(rounded, rowSums, na.rm = TRUE)
+  list(
+    spec = spec, n = nrow(s), values = values, fc = fc, max_points = options$max_points,
+    rounded = rounded, last = last, sums = sums,
+    version = rlang::hash(list(spec, values, fc, options$max_points))
+  )
 }
 
 # Series `ids` (0-based) of `measure`, keyed by id, each with its history's
@@ -74,10 +85,9 @@ explore_model <- function(data, measure, forecasts, level, options = grafts_opti
 explore_series <- function(model, measure, ids, raw = FALSE) {
   fc <- model$fc
   out <- map(ids + 1L, function(i) {
-    y <- model$values[[measure]][i, ]
-    y <- signif(y[seq_len(max(c(0, which(!is.na(y)))))], 6)
+    y <- model$rounded[[measure]][i, seq_len(model$last[[measure]][i])]
     s <- if (raw || length(y) <= 2 * model$max_points) list(y = y) else reduce_minmax(y, model$max_points)
-    s$sum <- sum(y, na.rm = TRUE)
+    s$sum <- model$sums[[measure]][[i]]
     if (!is.null(fc) && identical(fc$measure, measure)) {
       s$fc <- map(fc$rows[[i]], function(r) list(
         x = fc$x[r], mean = signif(fc$mean[r], 6),
@@ -99,12 +109,13 @@ forecast_model <- function(forecasts, keys, measures, level) {
   fkeys <- setdiff(tsibble::key_vars(forecasts), ".model")
   if (!setequal(fkeys, keys)) abort("`forecasts` must have the same keys as `data` (plus `.model`).")
   tb <- key_strings(tsibble::as_tibble(forecasts), keys)
+  model <- if (".model" %in% names(tb)) as.character(tb$.model) else rep("forecast", nrow(tb))
   d <- tb[[fabletools::distribution_var(forecasts)]]
   list(
     measure = measure,
     keys = tb[keys],
-    model = if (".model" %in% names(tb)) as.character(tb$.model) else rep("forecast", nrow(tb)),
-    models = unique(if (".model" %in% names(tb)) as.character(tb$.model) else "forecast"),
+    model = model,
+    models = unique(model),
     times = tb[[tsibble::index_var(forecasts)]],
     mean = mean(d),
     lo = map(level, function(l) unname(quantile(d, (1 - l / 100) / 2))),
@@ -114,6 +125,10 @@ forecast_model <- function(forecasts, keys, measures, level) {
 
 # Key columns as character, with aggregated values as NA
 key_strings <- function(tb, keys) {
-  for (k in keys) tb[[k]] <- ifelse(fabletools::is_aggregated(tb[[k]]), NA_character_, as.character(tb[[k]]))
+  for (k in keys) {
+    x <- as.character(tb[[k]])
+    x[fabletools::is_aggregated(tb[[k]])] <- NA_character_
+    tb[[k]] <- x
+  }
   tb
 }
