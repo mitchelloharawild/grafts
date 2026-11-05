@@ -96,33 +96,6 @@ as_widget <- function(x) {
   )
 }
 
-#' Shiny bindings for grafts()
-#'
-#' Shows an explorer from [grafts()] in Shiny, with every series written into
-#' the page. This suits small data: a Shiny app can't send a series at a time,
-#' so to explore large data, serve the explorer with [grafts_api()] or
-#' [grafts_serve()] and link to it or embed it in an `<iframe>`.
-#'
-#' @param outputId Output variable to read from.
-#' @param width,height A CSS length for the explorer.
-#' @param expr An expression that returns an explorer from [grafts()].
-#' @param env The environment in which to evaluate `expr`.
-#' @param quoted Is `expr` a quoted expression (with `quote()`)?
-#' @name grafts-shiny
-#' @export
-graftsOutput <- function(outputId, width = "100%", height = "600px") {
-  htmlwidgets::shinyWidgetOutput(outputId, "grafts", width, height, package = "grafts")
-}
-
-#' @rdname grafts-shiny
-#' @export
-renderGrafts <- function(expr, env = parent.frame(), quoted = FALSE) {
-  if (!quoted) expr <- substitute(expr)
-  # The explorer becomes a widget once evaluated
-  expr <- as.call(list(as_widget, expr))
-  htmlwidgets::shinyRenderWidget(expr, graftsOutput, env, quoted = TRUE)
-}
-
 # The structure and every full series of every measure, as JSON that can sit
 # inside a <script> element
 explore_payload <- function(model) {

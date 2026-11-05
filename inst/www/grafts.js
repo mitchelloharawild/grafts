@@ -21,6 +21,9 @@
 // Hovering a node highlights its time plot wherever it is drawn, or previews
 // it beside the node when it isn't.
 //
+// Embedded in an app (Shiny), an explorer reports what it shows through
+// opts.onChange(name, value), so the app can follow it.
+//
 // render functions are pure functions of the state, and handlers only change
 // the state, so CSS transitions animate every change.
 (function () {
@@ -262,9 +265,13 @@
   // ---- Explorer ----------------------------------------------------------------
 
   // An explorer of `spec` in the element `root`, getting series from `source`.
-  // `storageKey` names its saved theme and layout.
-  function Explorer(root, spec, source, storageKey) {
+  // `storageKey` names its saved theme and layout. `extra`: onChange, a
+  // function told what changed.
+  function Explorer(root, spec, source, storageKey, extra) {
     var self = this;
+    extra = extra || {};
+    this.onChange = extra.onChange;
+    this.sent = {};
     this.root = root;
     this.spec = spec;
     this.source = source;
@@ -329,6 +336,30 @@
     this.build();
     this.render();
   }
+
+  // ---- Embedding -------------------------------------------------------------
+
+  // What the app is told: the series as {keys, rows} (keys by column, one row
+  // of values per series), and the view
+  Explorer.prototype.summary = function () {
+    var self = this, st = this.state, g = this.focusGroup();
+    var rows = function (ids) { return { keys: self.keys, rows: ids.map(function (id) { return self.spec.series[id]; }) }; };
+    return {
+      focus: rows([st.focus]), children: rows(g ? g.kids : []), pinned: rows(st.pins),
+      split: g ? g.e.vars : [], view: this.tab(), set: this.set(), theme: this.theme, measure: this.ui.measure
+    };
+  };
+  // Tell onChange what differs from what it was last told
+  Explorer.prototype.notify = function () {
+    if (!this.onChange) return;
+    var now = this.summary(), self = this;
+    Object.keys(now).forEach(function (k) {
+      var j = JSON.stringify(now[k]);
+      if (self.sent[k] === j) return;
+      self.sent[k] = j;
+      self.onChange(k, now[k]);
+    });
+  };
 
   // Full name: every fixed key, leaving out keys implied by a deeper key of the same chain
   Explorer.prototype.fullLabel = function (s) {
@@ -465,6 +496,7 @@
     if (added && this.set() === 'children') this.flashPins();
     this.renderGraph();
     this.renderRight();
+    this.notify();
   };
   // Focus a series drawn in the view, as choosing it in the graph would. Its
   // last chosen split comes with it, and a child hidden behind its group's
@@ -890,6 +922,7 @@
   Explorer.prototype.persist = function () {
     var ui = this.ui;
     if (this.options.persist) save(this.storeKey, { size: this.size, ui: { tab: ui.tab, set: ui.set, sets: ui.sets, intervals: ui.intervals, cell: ui.cell } });
+    this.notify();
   };
   Explorer.prototype.toggleHelp = function (on) {
     this.helpOpen = on == null ? !this.helpOpen : on;
@@ -912,6 +945,7 @@
     this.renderGraph();
     this.renderDims();
     this.renderRight();
+    this.notify();
   };
 
   Explorer.prototype.renderControls = function () {
@@ -1775,7 +1809,8 @@
     return (h >>> 0).toString(36);
   }
   // Draw an explorer in `node`. opts: source (remote() by default), height
-  // (px or a CSS length) and storageKey. Promises the explorer, or undefined
+  // (px or a CSS length), storageKey and onChange (told what the explorer
+  // shows as it changes). Promises the explorer, or undefined
   // when the spec can't be loaded, which the element then says.
   function mount(node, opts) {
     opts = opts || {};
@@ -1784,7 +1819,7 @@
     if (opts.height != null) node.style.height = typeof opts.height === 'number' ? opts.height + 'px' : opts.height;
     if (!node.firstChild) el('p', 'grafts-loading', node, 'Loading the series graph…');
     return source.spec()
-      .then(function (spec) { return new Explorer(node, spec, source, opts.storageKey || specKey(spec)); })
+      .then(function (spec) { return new Explorer(node, spec, source, opts.storageKey || specKey(spec), { onChange: opts.onChange }); })
       .catch(function (err) {
         node.textContent = '';
         el('p', 'grafts-error', node, 'Could not load the series graph: ' + err.message);

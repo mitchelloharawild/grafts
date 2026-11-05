@@ -34,6 +34,7 @@ Suggests:
     fiery,
     knitr,
     pkgload,
+    shiny,
     testthat (>= 3.0.0),
     withr
 Config/testthat/edition: 3
