@@ -33,6 +33,27 @@ combos_text <- function(combos, keys) {
   paste(terms[nzchar(terms)], collapse = " + ")
 }
 
+# Crossed chains: the first steps down-left and the last down-right
+lattice_layout <- function(combos, chains) {
+  m <- nrow(combos)
+  lv <- do.call(cbind, map(chains, function(v) rowSums(combos[, v, drop = FALSE])))
+  x <- if (length(chains) == 1) rep(0, m) else drop(lv %*% seq(-1, 1, length.out = length(chains)))
+  name <- map_chr(seq_len(m), function(i) {
+    parts <- compact(map2(chains, lv[i, ], function(v, l) if (l) paste(v[seq_len(l)], collapse = " / ")))
+    if (length(parts)) paste(parts, collapse = " \u00d7 ") else "Total"
+  })
+  list(x = x, name = name)
+}
+
+# Other structures: each row of depth centred
+rows_layout <- function(combos, keys, y) {
+  m <- nrow(combos)
+  list(
+    x = ave(seq_len(m), y, FUN = function(i) seq_along(i) - (length(i) + 1) / 2),
+    name = map_chr(seq_len(m), function(i) if (any(combos[i, ])) paste(keys[combos[i, ]], collapse = " \u00d7 ") else "Total")
+  )
+}
+
 # One node per key combination, with Hasse edges to the combinations that fix
 # the fewest more keys. Crossed chains are laid out as a lattice: the first
 # steps down-left and the last down-right. Other structures are laid out by
@@ -48,17 +69,9 @@ dimension_graph <- function(combos, fixed, keys, chains) {
   # Combinations come in order of size, so each one's parents come first
   y <- integer(m)
   for (j in seq_len(m)) y[j] <- max(c(0L, y[cover[cover[, 2] == j, 1]] + 1L))
-  if (!is.null(chains)) {
-    lv <- do.call(cbind, map(chains, function(v) rowSums(combos[, v, drop = FALSE])))
-    x <- if (length(chains) == 1) rep(0, m) else drop(lv %*% seq(-1, 1, length.out = length(chains)))
-    name <- map_chr(seq_len(m), function(i) {
-      parts <- compact(map2(chains, lv[i, ], function(v, l) if (l) paste(v[seq_len(l)], collapse = " / ")))
-      if (length(parts)) paste(parts, collapse = " \u00d7 ") else "Total"
-    })
-  } else {
-    x <- ave(seq_len(m), y, FUN = function(i) seq_along(i) - (length(i) + 1) / 2)
-    name <- map_chr(seq_len(m), function(i) if (any(combos[i, ])) paste(keys[combos[i, ]], collapse = " \u00d7 ") else "Total")
-  }
+  layout <- if (is.null(chains)) rows_layout(combos, keys, y) else lattice_layout(combos, chains)
+  x <- layout$x
+  name <- layout$name
   nodes <- map(seq_len(m), function(i) list(keys = I(keys[combos[i, ]]), name = name[[i]], n = n[[i]], x = x[[i]], y = y[[i]]))
   edges <- map(seq_len(nrow(cover)), function(r) {
     i <- cover[r, 1]; j <- cover[r, 2]
