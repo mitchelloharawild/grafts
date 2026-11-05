@@ -10,11 +10,11 @@ api_grafts(api, x, ..., path = "/", max_points = 1000, max_ids = 1000)
 grafts_serve(
   x,
   ...,
-  port = httpuv::randomPort(),
-  host = "127.0.0.1",
+  port = serve_port(),
+  host = serve_host(),
   max_points = 1000,
-  launch = interactive(),
-  block = !interactive()
+  launch = FALSE,
+  block = TRUE
 )
 }
 \arguments{
@@ -36,14 +36,18 @@ visible. The season and stacked plots always get the full series.}
 \item{max_ids}{The most series that one request to \code{api/series} may ask for.
 The app asks for up to 200 at a time.}
 
-\item{port, host}{Where the app is served. Use \code{host = "0.0.0.0"} to accept
-connections from other machines, such as from a container.}
+\item{port, host}{Where the app is served, by default port 8000 on this
+machine only. Set \code{GRAFTS_PORT} (or \code{PORT}) and \code{GRAFTS_HOST}, or the
+options \code{grafts.port} and \code{grafts.host}, to change the defaults without
+editing code. Use \code{host = "0.0.0.0"} to accept connections from other
+machines, such as from a container. The app has no sign-in, so put
+anything private behind an authenticating proxy.}
 
 \item{launch}{Open the app, in the IDE's viewer where there is one, else in
 a browser.}
 
-\item{block}{Block the R session while serving. When \code{FALSE}, stop the app
-with \code{plumber2::api_stop()} on the returned api.}
+\item{block}{Block the R session while serving, like a Shiny app. When
+\code{FALSE}, stop the app with \code{plumber2::api_stop()} on the returned api.}
 }
 \value{
 \code{api_grafts()} returns \code{api} with the explorer added.
@@ -52,8 +56,11 @@ with \code{plumber2::api_stop()} on the returned api.}
 \description{
 \code{api_grafts()} adds an explorer to a plumber2 api, for deploying it (with
 Docker or Posit Connect, say) or mounting it beside other routes. It adds
-the routes \verb{\{path\}api/spec} and \verb{\{path\}api/series}, and the app's page at
-\code{{path}}, which \code{{path}} without its trailing slash redirects to.
+the routes \verb{\{path\}api/spec}, \verb{\{path\}api/series} and \verb{\{path\}api/health} (for
+load balancers and containers), and the app's page at \code{{path}}, which
+\code{{path}} without its trailing slash redirects to. Responses are cached
+privately and revalidated with an \code{ETag}, so a redeployed dataset is seen
+at once.
 \code{grafts_serve()} runs an explorer on its own server, for scripts and
 containers. Printing an explorer from \code{\link[=grafts]{grafts()}} in the console runs
 \code{grafts_serve()}, blocking the console like a Shiny app until it is stopped.
@@ -78,7 +85,6 @@ plumber2::api() |>
   plumber2::api_run()
 
 # In Docker, from the command line
-# Rscript -e 'readRDS("tourism_agg.rds") |>
-#   grafts::grafts_serve(host = "0.0.0.0", port = 8000, launch = FALSE)'
+# Rscript -e 'readRDS("tourism_agg.rds") |> grafts::grafts_serve(host = "0.0.0.0")'
 \dontshow{\}) # examplesIf}
 }

@@ -6,16 +6,50 @@ hit <- function(api, url) {
   api$test_request(req)
 }
 
-test_that("spec and series are served with cache headers", {
+test_that("spec and series are served, privately cached and revalidated", {
   api <- api_grafts(plumber2::api(doc_type = NULL), agg)
   res <- hit(api, "/api/spec")
   expect_equal(res$status, 200L)
-  expect_match(res$headers[["cache-control"]], "max-age")
+  expect_match(res$headers[["cache-control"]], "private")
+  expect_false(is.null(res$headers[["etag"]]))
   expect_true("measures" %in% names(jsonlite::fromJSON(res$body)))
 
   res <- hit(api, "/api/series?ids=0,1")
   expect_equal(res$status, 200L)
   expect_setequal(names(jsonlite::fromJSON(res$body)), c("0", "1"))
+})
+
+test_that("an unchanged response is a 304, and a changed one is not", {
+  api <- api_grafts(plumber2::api(doc_type = NULL), agg)
+  etag <- hit(api, "/api/series?ids=0")$headers[["etag"]]
+  again <- function(url, tag) {
+    api$test_request(fiery::fake_request(
+      paste0("http://127.0.0.1:8000", url), headers = list(`If-None-Match` = tag)
+    ))
+  }
+  expect_equal(again("/api/series?ids=0", etag)$status, 304L)
+  expect_equal(again("/api/series?ids=1", etag)$status, 200L)
+})
+
+test_that("a health route reports the series", {
+  api <- api_grafts(plumber2::api(doc_type = NULL), agg)
+  res <- hit(api, "/api/health")
+  expect_equal(res$status, 200L)
+  expect_equal(jsonlite::fromJSON(res$body)$status, "ok")
+})
+
+test_that("the serving port and host come from options and the environment", {
+  withr::local_options(grafts.port = NULL, grafts.host = NULL)
+  withr::local_envvar(GRAFTS_PORT = NA, PORT = NA, GRAFTS_HOST = NA)
+  expect_equal(serve_port(), 8000L)
+  expect_equal(serve_host(), "127.0.0.1")
+  withr::local_envvar(PORT = "9000")
+  expect_equal(serve_port(), 9000L)
+  withr::local_envvar(GRAFTS_PORT = "9100", GRAFTS_HOST = "0.0.0.0")
+  expect_equal(serve_port(), 9100L)
+  expect_equal(serve_host(), "0.0.0.0")
+  withr::local_options(grafts.port = 9200L)
+  expect_equal(serve_port(), 9200L)
 })
 
 test_that("invalid requests are 400", {

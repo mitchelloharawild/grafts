@@ -6,8 +6,11 @@
 #'
 #' `api_grafts()` adds an explorer to a plumber2 api, for deploying it (with
 #' Docker or Posit Connect, say) or mounting it beside other routes. It adds
-#' the routes `{path}api/spec` and `{path}api/series`, and the app's page at
-#' `{path}`, which `{path}` without its trailing slash redirects to.
+#' the routes `{path}api/spec`, `{path}api/series` and `{path}api/health` (for
+#' load balancers and containers), and the app's page at `{path}`, which
+#' `{path}` without its trailing slash redirects to. Responses are cached
+#' privately and revalidated with an `ETag`, so a redeployed dataset is seen
+#' at once.
 #' `grafts_serve()` runs an explorer on its own server, for scripts and
 #' containers. Printing an explorer from [grafts()] in the console runs
 #' `grafts_serve()`, blocking the console like a Shiny app until it is stopped.
@@ -27,12 +30,16 @@
 #'   visible. The season and stacked plots always get the full series.
 #' @param max_ids The most series that one request to `api/series` may ask for.
 #'   The app asks for up to 200 at a time.
-#' @param port,host Where the app is served. Use `host = "0.0.0.0"` to accept
-#'   connections from other machines, such as from a container.
+#' @param port,host Where the app is served, by default port 8000 on this
+#'   machine only. Set `GRAFTS_PORT` (or `PORT`) and `GRAFTS_HOST`, or the
+#'   options `grafts.port` and `grafts.host`, to change the defaults without
+#'   editing code. Use `host = "0.0.0.0"` to accept connections from other
+#'   machines, such as from a container. The app has no sign-in, so put
+#'   anything private behind an authenticating proxy.
 #' @param launch Open the app, in the IDE's viewer where there is one, else in
 #'   a browser.
-#' @param block Block the R session while serving. When `FALSE`, stop the app
-#'   with `plumber2::api_stop()` on the returned api.
+#' @param block Block the R session while serving, like a Shiny app. When
+#'   `FALSE`, stop the app with `plumber2::api_stop()` on the returned api.
 #' @return `api_grafts()` returns `api` with the explorer added.
 #'   `grafts_serve()` returns its plumber2 api, invisibly.
 #' @examplesIf FALSE
@@ -50,8 +57,7 @@
 #'   plumber2::api_run()
 #'
 #' # In Docker, from the command line
-#' # Rscript -e 'readRDS("tourism_agg.rds") |>
-#' #   grafts::grafts_serve(host = "0.0.0.0", port = 8000, launch = FALSE)'
+#' # Rscript -e 'readRDS("tourism_agg.rds") |> grafts::grafts_serve(host = "0.0.0.0")'
 #' @export
 api_grafts <- function(api, x, ..., path = "/", max_points = 1000, max_ids = 1000) {
   model <- as_grafts(x, ...)$model
@@ -59,14 +65,30 @@ api_grafts <- function(api, x, ..., path = "/", max_points = 1000, max_ids = 100
   path <- paste0("/", gsub("^/+|/+$", "", path), "/")
   path <- sub("^//$", "/", path)
 
-  # The data is fixed while the server runs, but a redeploy changes it
-  cache <- function(response) response$set_header("Cache-Control", "public, max-age=3600")
+  # The data is fixed while the server runs, but a redeploy changes it. So
+  # responses are cached privately (a shared cache could serve one visitor's
+  # data to another), and revalidated with an ETag of the data and request: a
+  # redeploy is seen at once, and an unchanged series costs a 304.
+  version <- rlang::hash(list(model$spec, model$values, model$fc, model$max_points))
+  fresh <- function(request, response, what) {
+    etag <- paste0("\"", rlang::hash(list(version, what)), "\"")
+    response$set_header("Cache-Control", "private, no-cache")
+    response$set_header("ETag", etag)
+    if (identical(request$get_header("If-None-Match"), etag)) {
+      response$status <- 304L
+      return(TRUE)
+    }
+    FALSE
+  }
 
-  api <- plumber2::api_get(api, paste0(path, "api/spec"), function(response) {
-    cache(response)
+  api <- plumber2::api_get(api, paste0(path, "api/health"), function() {
+    list(status = "ok", series = model$n)
+  }, serializers = json_serializer)
+  api <- plumber2::api_get(api, paste0(path, "api/spec"), function(request, response) {
+    if (fresh(request, response, "spec")) return(NULL)
     model$spec
   }, serializers = json_serializer)
-  api <- plumber2::api_get(api, paste0(path, "api/series"), function(query, response) {
+  api <- plumber2::api_get(api, paste0(path, "api/series"), function(request, query, response) {
     measure <- query$measure %||% model$spec$measure
     ids <- suppressWarnings(as.integer(unlist(strsplit(as.character(query$ids), ",", fixed = TRUE))))
     if (!measure %in% model$spec$measures || anyNA(ids) || any(ids < 0 | ids >= model$n)) {
@@ -77,7 +99,7 @@ api_grafts <- function(api, x, ..., path = "/", max_points = 1000, max_ids = 100
       response$status <- 400L
       return(list(error = paste("At most", max_ids, "series per request")))
     }
-    cache(response)
+    if (fresh(request, response, list(measure, ids, query$raw))) return(NULL)
     explore_series(model, measure, ids, raw = identical(query$raw, "1"))
   }, serializers = json_serializer)
 
@@ -108,8 +130,8 @@ api_grafts <- function(api, x, ..., path = "/", max_points = 1000, max_ids = 100
 
 #' @rdname api_grafts
 #' @export
-grafts_serve <- function(x, ..., port = httpuv::randomPort(), host = "127.0.0.1",
-                         max_points = 1000, launch = interactive(), block = !interactive()) {
+grafts_serve <- function(x, ..., port = serve_port(), host = serve_host(),
+                         max_points = 1000, launch = FALSE, block = TRUE) {
   x <- as_grafts(x, ...)
   api <- plumber2::api(host = host, port = port, doc_type = NULL)
   # Without routr's note on making its router
@@ -121,6 +143,7 @@ grafts_serve <- function(x, ..., port = httpuv::randomPort(), host = "127.0.0.1"
   cli::cli_inform(c(
     "Exploring {x$model$n} series at {.url {url}}",
     if (open_host != host) c(i = "Listening on all interfaces ({host})."),
+    if (open_host != host) c("!" = "There is no sign-in: anyone who can reach this machine can explore the data."),
     i = if (block) "Press {.kbd Ctrl+C} (or {.kbd Esc} in RStudio and Positron) to stop." else "Stop it with {.code plumber2::api_stop(<api>)}."
   ))
   # Opened once the server is up, as a blocking run only returns once stopped
@@ -132,6 +155,24 @@ grafts_serve <- function(x, ..., port = httpuv::randomPort(), host = "127.0.0.1"
   )
   invisible(api)
 }
+
+# Where an explorer is served by default: the options grafts.port and
+# grafts.host, else the environment (GRAFTS_PORT or PORT, as set by hosts
+# such as Heroku and Cloud Run, and GRAFTS_HOST), else port 8000 on this
+# machine only. The console picks a free port instead, so that explorers
+# don't collide.
+serve_port <- function(free = FALSE) {
+  port <- getOption("grafts.port") %||%
+    as.integer(Sys.getenv("GRAFTS_PORT", Sys.getenv("PORT", NA)))
+  if (length(port) != 1 || is.na(port)) {
+    port <- if (free) httpuv::randomPort() else 8000L
+  }
+  port
+}
+serve_host <- function() {
+  getOption("grafts.host") %||% (Sys.getenv("GRAFTS_HOST", "") %|% "127.0.0.1")
+}
+`%|%` <- function(x, y) if (nzchar(x)) x else y
 
 # The IDE's viewer where there is one, as for a Shiny app, else a browser
 open_url <- function(url) {

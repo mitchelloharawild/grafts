@@ -88,7 +88,7 @@ format.grafts <- function(x, ...) {
 print.grafts <- function(x, ...) {
   if (inherits(x, "htmlwidget")) return(NextMethod())
   if (interactive()) {
-    grafts_serve(x, launch = TRUE, block = TRUE)
+    grafts_serve(x, port = serve_port(free = TRUE), launch = TRUE, block = TRUE)
   } else {
     writeLines(format(x))
   }
