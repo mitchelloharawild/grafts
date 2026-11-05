@@ -106,12 +106,40 @@ Responses are cached privately and revalidated, `api/health` answers
 load balancers, and the page’s links are relative, so the app works
 behind a proxy that mounts it under a path prefix. `grafts_serve()`
 listens on port 8000 (or `GRAFTS_PORT`/`PORT`), and has no sign-in, so
-keep anything private behind an authenticating proxy. In Shiny,
-`renderGrafts()` writes every series into the page, which suits small
-data; for large data, link to a served explorer.
+keep anything private behind an authenticating proxy.
 
 Several explorers can share one api by giving each a `path`, such as
 `grafts_api(api, grafts(tourism_agg), path = "/tourism/")`.
+
+## Shiny
+
+`graftsOutput()` and `renderGrafts()` put an explorer in a Shiny app.
+Small data are written into the page, and large data stay in R, which
+serves each series through the session as it is drawn.
+
+The explorer tells the app what it shows, through inputs named after its
+output: `input$ts_focus` is the focused series (a one-row data frame of
+its keys), and `ts_children`, `ts_pinned`, `ts_split`, `ts_view`,
+`ts_set`, `ts_theme` and `ts_measure` follow the rest. `graftsProxy()`
+steers it from the server, and `grafts_update()` replaces its data
+without starting over: when the new data have the same series, the
+graph, focus, pins and views stay as they were.
+
+``` r
+server <- function(input, output, session) {
+  output$ts <- renderGrafts(grafts(tourism_agg))
+
+  observeEvent(input$ts_focus, {
+    print(input$ts_focus)  # e.g. State = "Victoria", Region = NA
+  })
+  observeEvent(input$show_nsw, {
+    graftsProxy("ts") |> grafts_focus(list(State = "New South Wales"))
+  })
+  observeEvent(input$refresh, {
+    graftsProxy("ts") |> grafts_update(grafts(latest_data()))
+  })
+}
+```
 
 ## Embedding
 

@@ -23,4 +23,8 @@ reference:
   desc: "The explorer on static web pages, with no R process behind it"
   contents:
   - grafts_save
+- title: "Shiny"
+  desc: "The explorer in a Shiny app, reporting what it shows and steered by the server"
+  contents:
   - grafts-shiny
+  - grafts-proxy
