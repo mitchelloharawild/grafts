@@ -1,5 +1,5 @@
-# Everything the server needs, computed once
-explore_model <- function(data, measure, forecasts, level, options = grafts_options()) {
+# The numeric measured variables of `data`, once its keys are checked
+check_data <- function(data) {
   if (!tsibble::is_tsibble(data)) abort("`data` must be a tsibble.")
   keys <- tsibble::key_vars(data)
   plain <- keys[!map_lgl(keys, function(k) inherits(data[[k]], "agg_vec"))]
@@ -12,9 +12,22 @@ explore_model <- function(data, measure, forecasts, level, options = grafts_opti
   }
   measures <- keep(tsibble::measured_vars(data), function(v) is.numeric(data[[v]]))
   if (!length(measures)) abort("`data` has no numeric measured variables.")
+  measures
+}
+
+# The name of the measure shown first
+check_measure <- function(measure, measures) {
   measure <- if (quo_is_null(measure)) measures[[1]] else as_name(measure)
   if (!measure %in% measures) abort("`measure` must be a numeric measured variable of `data`.")
+  measure
+}
 
+# Everything the server needs, computed once
+explore_model <- function(data, measure, forecasts, level, options = grafts_options()) {
+  measures <- check_data(data)
+  measure <- check_measure(measure, measures)
+
+  keys <- tsibble::key_vars(data)
   index <- tsibble::index_var(data)
   tb <- key_strings(tsibble::as_tibble(data), keys)
   # One row per series, ordered by depth, then key values
@@ -118,9 +131,16 @@ forecast_model <- function(forecasts, keys, measures, level) {
     models = unique(model),
     times = tb[[tsibble::index_var(forecasts)]],
     mean = mean(d),
-    lo = map(level, function(l) unname(quantile(d, (1 - l / 100) / 2))),
-    hi = map(level, function(l) unname(quantile(d, 1 - (1 - l / 100) / 2)))
+    lo = interval_bounds(d, (1 - level / 100) / 2),
+    hi = interval_bounds(d, 1 - (1 - level / 100) / 2)
   )
+}
+
+# The quantiles `probs` of each distribution, as a list with a vector for each
+# probability
+interval_bounds <- function(d, probs) {
+  q <- do.call(rbind, quantile(d, probs))
+  map(seq_along(probs), function(j) unname(q[, j]))
 }
 
 # Key columns as character, with aggregated values as NA
