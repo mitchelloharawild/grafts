@@ -36,18 +36,15 @@ library(fable)
 tourism_agg <- aggregate_key(
   tsibble::tourism, Purpose * (State / Region), Trips = sum(Trips)
 )
-app <- graph_explore(tourism_agg)
+grafts(tourism_agg)
 ```
 
-[`graph_explore()`](https://pkg.mitchelloharawild.com/grafts/reference/graph_explore.md)
-opens the explorer in a browser. The data stays in R, which serves each
-series only when it is drawn, so large collections of series open
-quickly. The app runs in the background until it is stopped with:
-
-``` r
-
-plumber2::api_stop(app)
-```
+[`grafts()`](https://pkg.mitchelloharawild.com/grafts/reference/grafts.md)
+makes an explorer, which opens in the viewer or a browser when printed
+in the console. The data stays in R, which serves each series only when
+it is drawn, so large collections of series open quickly. Like a Shiny
+app, the console waits while the explorer is open: press Ctrl+C (or Esc
+in RStudio and Positron) to stop it.
 
 To also explore forecasts, pass a [fable](https://fable.tidyverts.org/)
 of forecasts for those series to `forecasts`. Each model’s forecasts and
@@ -58,7 +55,7 @@ intervals are drawn after the data.
 tourism_fc <- tourism_agg |>
   model(ets = ETS(Trips), snaive = SNAIVE(Trips)) |>
   forecast(h = "2 years")
-app <- graph_explore(tourism_agg, forecasts = tourism_fc)
+grafts(tourism_agg, forecasts = tourism_fc)
 ```
 
 ## Exploring
@@ -78,13 +75,160 @@ wherever it is plotted. Right-clicking a node collapses its children,
 and shift-clicking pins it so series from different parts of the graph
 can be compared side by side.
 
+## Deploying
+
+To serve the explorer from a server, add it to a plumber2 api with
+[`grafts_api()`](https://pkg.mitchelloharawild.com/grafts/reference/grafts_api.md),
+which takes an explorer from
+[`grafts()`](https://pkg.mitchelloharawild.com/grafts/reference/grafts.md).
+In a plumber2 file, such as for Posit Connect:
+
+``` r
+
+#* @plumber
+function(api) {
+  grafts_api(api, grafts(readRDS("tourism_agg.rds")))
+}
+```
+
+In Docker, listen on all interfaces:
+
+``` r
+
+readRDS("tourism_agg.rds") |>
+  grafts() |>
+  grafts_serve(host = "0.0.0.0")
+```
+
+Responses are cached privately and revalidated, `api/health` answers
+load balancers, and the page’s links are relative, so the app works
+behind a proxy that mounts it under a path prefix.
+[`grafts_serve()`](https://pkg.mitchelloharawild.com/grafts/reference/grafts_api.md)
+listens on port 8000 (or `GRAFTS_PORT`/`PORT`), and has no sign-in, so
+keep anything private behind an authenticating proxy.
+
+Several explorers can share one api by giving each a `path`, such as
+`grafts_api(api, grafts(tourism_agg), path = "/tourism/")`.
+
+## Shiny
+
+[`graftsOutput()`](https://pkg.mitchelloharawild.com/grafts/reference/grafts-shiny.md)
+and
+[`renderGrafts()`](https://pkg.mitchelloharawild.com/grafts/reference/grafts-shiny.md)
+put an explorer in a Shiny app. Small data are written into the page,
+and large data stay in R, which serves each series through the session
+as it is drawn.
+
+The explorer tells the app what it shows, through inputs named after its
+output: `input$ts_focus` is the focused series (a one-row data frame of
+its keys), and `ts_children`, `ts_pinned`, `ts_split`, `ts_view`,
+`ts_set`, `ts_theme` and `ts_measure` follow the rest.
+[`graftsProxy()`](https://pkg.mitchelloharawild.com/grafts/reference/grafts-proxy.md)
+steers it from the server, and
+[`grafts_update()`](https://pkg.mitchelloharawild.com/grafts/reference/grafts-proxy.md)
+replaces its data without starting over: when the new data have the same
+series, the graph, focus, pins and views stay as they were.
+
+``` r
+
+server <- function(input, output, session) {
+  output$ts <- renderGrafts(grafts(tourism_agg))
+
+  observeEvent(input$ts_focus, {
+    print(input$ts_focus)  # e.g. State = "Victoria", Region = NA
+  })
+  observeEvent(input$show_nsw, {
+    graftsProxy("ts") |> grafts_focus(list(State = "New South Wales"))
+  })
+  observeEvent(input$refresh, {
+    graftsProxy("ts") |> grafts_update(grafts(latest_data()))
+  })
+}
+```
+
+## Embedding
+
+Small collections of series can be explored without R, on a static web
+page such as a pkgdown site, a blog or GitHub Pages. An explorer from
+[`grafts()`](https://pkg.mitchelloharawild.com/grafts/reference/grafts.md)
+in an R Markdown or Quarto chunk, or in Shiny with
+[`renderGrafts()`](https://pkg.mitchelloharawild.com/grafts/reference/grafts-shiny.md),
+is written into the page with every series, and a page can hold several
+explorers.
+[`grafts_save()`](https://pkg.mitchelloharawild.com/grafts/reference/grafts_save.md)
+writes one to a single HTML file.
+
+``` r
+
+tourism <- grafts(tourism_agg, forecasts = tourism_fc,
+                  options = grafts_options(height = 600))
+tourism  # in a chunk
+grafts_save(tourism, "tourism.html")
+```
+
+[`grafts_options()`](https://pkg.mitchelloharawild.com/grafts/reference/grafts_options.md)
+chooses the views offered, the starting view and theme, and whether
+visitors’ choices persist, wherever the explorer goes. Whether series
+add up to their parents is detected, hiding the Stacked view and share
+scales for means.
+
+``` r
+
+grafts(tourism_agg, options = grafts_options(
+  views = c("grid", "season"), theme = "dark", persist = FALSE
+))
+```
+
+Every series is written into the page, so large collections are better
+served from R, in the console or with
+[`grafts_api()`](https://pkg.mitchelloharawild.com/grafts/reference/grafts_api.md).
+Embedded explorers use the system’s UI font, unless the page loads
+[Source Sans 3](https://fonts.google.com/specimen/Source+Sans+3) as the
+app does.
+
 # Package index
 
 ## Exploration
 
 Interactive exploration of aggregated time series and their forecasts
 
-- [`graph_explore()`](https://pkg.mitchelloharawild.com/grafts/reference/graph_explore.md)
+- [`grafts()`](https://pkg.mitchelloharawild.com/grafts/reference/grafts.md)
   : Explore an aggregated tsibble through its series and dimension
   graphs
+- [`grafts_options()`](https://pkg.mitchelloharawild.com/grafts/reference/grafts_options.md)
+  : Options for the explorer
+
+## Serving
+
+The explorer on a server, sending each series when it is drawn
+
+- [`grafts_api()`](https://pkg.mitchelloharawild.com/grafts/reference/grafts_api.md)
+  [`grafts_serve()`](https://pkg.mitchelloharawild.com/grafts/reference/grafts_api.md)
+  : Serve the explorer with plumber2
+
+## Embedding
+
+The explorer on static web pages, with no R process behind it
+
+- [`grafts_save()`](https://pkg.mitchelloharawild.com/grafts/reference/grafts_save.md)
+  : Save the explorer as a static web page
+
+## Shiny
+
+The explorer in a Shiny app, reporting what it shows and steered by the
+server
+
+- [`graftsOutput()`](https://pkg.mitchelloharawild.com/grafts/reference/grafts-shiny.md)
+  [`renderGrafts()`](https://pkg.mitchelloharawild.com/grafts/reference/grafts-shiny.md)
+  : Shiny bindings for grafts()
+- [`graftsProxy()`](https://pkg.mitchelloharawild.com/grafts/reference/grafts-proxy.md)
+  [`grafts_focus()`](https://pkg.mitchelloharawild.com/grafts/reference/grafts-proxy.md)
+  [`grafts_pin()`](https://pkg.mitchelloharawild.com/grafts/reference/grafts-proxy.md)
+  [`grafts_unpin()`](https://pkg.mitchelloharawild.com/grafts/reference/grafts-proxy.md)
+  [`grafts_view()`](https://pkg.mitchelloharawild.com/grafts/reference/grafts-proxy.md)
+  [`grafts_theme()`](https://pkg.mitchelloharawild.com/grafts/reference/grafts-proxy.md)
+  [`grafts_measure()`](https://pkg.mitchelloharawild.com/grafts/reference/grafts-proxy.md)
+  [`grafts_reset()`](https://pkg.mitchelloharawild.com/grafts/reference/grafts-proxy.md)
+  [`grafts_update()`](https://pkg.mitchelloharawild.com/grafts/reference/grafts-proxy.md)
+  : Steer an explorer in Shiny
 

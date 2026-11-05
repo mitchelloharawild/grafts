@@ -77,22 +77,73 @@ The grafts explorer app
 <span><span class="va">tourism_agg</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://fabletools.tidyverts.org/reference/aggregate_key.html" class="external-link">aggregate_key</a></span><span class="op">(</span></span>
 <span>  <span class="fu">tsibble</span><span class="fu">::</span><span class="va"><a href="https://tsibble.tidyverts.org/reference/tourism.html" class="external-link">tourism</a></span>, <span class="va">Purpose</span> <span class="op">*</span> <span class="op">(</span><span class="va">State</span> <span class="op">/</span> <span class="va">Region</span><span class="op">)</span>, Trips <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/sum.html" class="external-link">sum</a></span><span class="op">(</span><span class="va">Trips</span><span class="op">)</span></span>
 <span><span class="op">)</span></span>
-<span><span class="va">app</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/graph_explore.html">graph_explore</a></span><span class="op">(</span><span class="va">tourism_agg</span><span class="op">)</span></span></code></pre></div>
-<p><code><a href="reference/graph_explore.html">graph_explore()</a></code> opens the explorer in a browser. The data stays in R, which serves each series only when it is drawn, so large collections of series open quickly. The app runs in the background until it is stopped with:</p>
-<div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="fu">plumber2</span><span class="fu">::</span><span class="fu"><a href="https://plumber2.posit.co/reference/api_run.html" class="external-link">api_stop</a></span><span class="op">(</span><span class="va">app</span><span class="op">)</span></span></code></pre></div>
+<span><span class="fu"><a href="reference/grafts.html">grafts</a></span><span class="op">(</span><span class="va">tourism_agg</span><span class="op">)</span></span></code></pre></div>
+<p><code><a href="reference/grafts.html">grafts()</a></code> makes an explorer, which opens in the viewer or a browser when printed in the console. The data stays in R, which serves each series only when it is drawn, so large collections of series open quickly. Like a Shiny app, the console waits while the explorer is open: press Ctrl+C (or Esc in RStudio and Positron) to stop it.</p>
 <p>To also explore forecasts, pass a <a href="https://fable.tidyverts.org/" class="external-link">fable</a> of forecasts for those series to <code>forecasts</code>. Each model’s forecasts and intervals are drawn after the data.</p>
-<div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">tourism_fc</span> <span class="op">&lt;-</span> <span class="va">tourism_agg</span> <span class="op">|&gt;</span></span>
 <span>  <span class="fu"><a href="https://fabletools.tidyverts.org/reference/model.html" class="external-link">model</a></span><span class="op">(</span>ets <span class="op">=</span> <span class="fu"><a href="https://fable.tidyverts.org/reference/ETS.html" class="external-link">ETS</a></span><span class="op">(</span><span class="va">Trips</span><span class="op">)</span>, snaive <span class="op">=</span> <span class="fu"><a href="https://fable.tidyverts.org/reference/RW.html" class="external-link">SNAIVE</a></span><span class="op">(</span><span class="va">Trips</span><span class="op">)</span><span class="op">)</span> <span class="op">|&gt;</span></span>
 <span>  <span class="fu"><a href="https://generics.r-lib.org/reference/forecast.html" class="external-link">forecast</a></span><span class="op">(</span>h <span class="op">=</span> <span class="st">"2 years"</span><span class="op">)</span></span>
-<span><span class="va">app</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/graph_explore.html">graph_explore</a></span><span class="op">(</span><span class="va">tourism_agg</span>, forecasts <span class="op">=</span> <span class="va">tourism_fc</span><span class="op">)</span></span></code></pre></div>
+<span><span class="fu"><a href="reference/grafts.html">grafts</a></span><span class="op">(</span><span class="va">tourism_agg</span>, forecasts <span class="op">=</span> <span class="va">tourism_fc</span><span class="op">)</span></span></code></pre></div>
 </div>
 <div class="section level2">
 <h2 id="exploring">Exploring<a class="anchor" aria-label="anchor" href="#exploring"></a>
 </h2>
 <p>The explorer starts from the total of all series. Its left side shows the <strong>series graph</strong>, where each node is a series and its children sum to it. Clicking a node lists the ways it can be split, such as by <code>Purpose</code> or <code>State</code>, and choosing one adds those disaggregates to the graph. Below it, the <strong>dimension graph</strong> shows the structure of keys and highlights where the explorer is.</p>
 <p>The right side plots the series being explored above its disaggregates, which can be shown as small multiples, overlaid, stacked (to see what each contributes to the total) or as seasonal plots. Clicking a time plot focuses that series, and hovering a node highlights its series wherever it is plotted. Right-clicking a node collapses its children, and shift-clicking pins it so series from different parts of the graph can be compared side by side.</p>
+</div>
+<div class="section level2">
+<h2 id="deploying">Deploying<a class="anchor" aria-label="anchor" href="#deploying"></a>
+</h2>
+<p>To serve the explorer from a server, add it to a plumber2 api with <code><a href="reference/grafts_api.html">grafts_api()</a></code>, which takes an explorer from <code><a href="reference/grafts.html">grafts()</a></code>. In a plumber2 file, such as for Posit Connect:</p>
+<div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="co">#* @plumber</span></span>
+<span><span class="kw">function</span><span class="op">(</span><span class="va">api</span><span class="op">)</span> <span class="op">{</span></span>
+<span>  <span class="fu"><a href="reference/grafts_api.html">grafts_api</a></span><span class="op">(</span><span class="va">api</span>, <span class="fu"><a href="reference/grafts.html">grafts</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/readRDS.html" class="external-link">readRDS</a></span><span class="op">(</span><span class="st">"tourism_agg.rds"</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="op">}</span></span></code></pre></div>
+<p>In Docker, listen on all interfaces:</p>
+<div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/readRDS.html" class="external-link">readRDS</a></span><span class="op">(</span><span class="st">"tourism_agg.rds"</span><span class="op">)</span> <span class="op">|&gt;</span></span>
+<span>  <span class="fu"><a href="reference/grafts.html">grafts</a></span><span class="op">(</span><span class="op">)</span> <span class="op">|&gt;</span></span>
+<span>  <span class="fu"><a href="reference/grafts_api.html">grafts_serve</a></span><span class="op">(</span>host <span class="op">=</span> <span class="st">"0.0.0.0"</span><span class="op">)</span></span></code></pre></div>
+<p>Responses are cached privately and revalidated, <code>api/health</code> answers load balancers, and the page’s links are relative, so the app works behind a proxy that mounts it under a path prefix. <code><a href="reference/grafts_api.html">grafts_serve()</a></code> listens on port 8000 (or <code>GRAFTS_PORT</code>/<code>PORT</code>), and has no sign-in, so keep anything private behind an authenticating proxy.</p>
+<p>Several explorers can share one api by giving each a <code>path</code>, such as <code>grafts_api(api, grafts(tourism_agg), path = "/tourism/")</code>.</p>
+</div>
+<div class="section level2">
+<h2 id="shiny">Shiny<a class="anchor" aria-label="anchor" href="#shiny"></a>
+</h2>
+<p><code><a href="reference/grafts-shiny.html">graftsOutput()</a></code> and <code><a href="reference/grafts-shiny.html">renderGrafts()</a></code> put an explorer in a Shiny app. Small data are written into the page, and large data stay in R, which serves each series through the session as it is drawn.</p>
+<p>The explorer tells the app what it shows, through inputs named after its output: <code>input$ts_focus</code> is the focused series (a one-row data frame of its keys), and <code>ts_children</code>, <code>ts_pinned</code>, <code>ts_split</code>, <code>ts_view</code>, <code>ts_set</code>, <code>ts_theme</code> and <code>ts_measure</code> follow the rest. <code><a href="reference/grafts-proxy.html">graftsProxy()</a></code> steers it from the server, and <code><a href="reference/grafts-proxy.html">grafts_update()</a></code> replaces its data without starting over: when the new data have the same series, the graph, focus, pins and views stay as they were.</p>
+<div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">server</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">input</span>, <span class="va">output</span>, <span class="va">session</span><span class="op">)</span> <span class="op">{</span></span>
+<span>  <span class="va">output</span><span class="op">$</span><span class="va">ts</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/grafts-shiny.html">renderGrafts</a></span><span class="op">(</span><span class="fu"><a href="reference/grafts.html">grafts</a></span><span class="op">(</span><span class="va">tourism_agg</span><span class="op">)</span><span class="op">)</span></span>
+<span></span>
+<span>  <span class="fu">observeEvent</span><span class="op">(</span><span class="va">input</span><span class="op">$</span><span class="va">ts_focus</span>, <span class="op">{</span></span>
+<span>    <span class="fu"><a href="https://rdrr.io/r/base/print.html" class="external-link">print</a></span><span class="op">(</span><span class="va">input</span><span class="op">$</span><span class="va">ts_focus</span><span class="op">)</span>  <span class="co"># e.g. State = "Victoria", Region = NA</span></span>
+<span>  <span class="op">}</span><span class="op">)</span></span>
+<span>  <span class="fu">observeEvent</span><span class="op">(</span><span class="va">input</span><span class="op">$</span><span class="va">show_nsw</span>, <span class="op">{</span></span>
+<span>    <span class="fu"><a href="reference/grafts-proxy.html">graftsProxy</a></span><span class="op">(</span><span class="st">"ts"</span><span class="op">)</span> <span class="op">|&gt;</span> <span class="fu"><a href="reference/grafts-proxy.html">grafts_focus</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>State <span class="op">=</span> <span class="st">"New South Wales"</span><span class="op">)</span><span class="op">)</span></span>
+<span>  <span class="op">}</span><span class="op">)</span></span>
+<span>  <span class="fu">observeEvent</span><span class="op">(</span><span class="va">input</span><span class="op">$</span><span class="va">refresh</span>, <span class="op">{</span></span>
+<span>    <span class="fu"><a href="reference/grafts-proxy.html">graftsProxy</a></span><span class="op">(</span><span class="st">"ts"</span><span class="op">)</span> <span class="op">|&gt;</span> <span class="fu"><a href="reference/grafts-proxy.html">grafts_update</a></span><span class="op">(</span><span class="fu"><a href="reference/grafts.html">grafts</a></span><span class="op">(</span><span class="fu">latest_data</span><span class="op">(</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span>
+<span>  <span class="op">}</span><span class="op">)</span></span>
+<span><span class="op">}</span></span></code></pre></div>
+</div>
+<div class="section level2">
+<h2 id="embedding">Embedding<a class="anchor" aria-label="anchor" href="#embedding"></a>
+</h2>
+<p>Small collections of series can be explored without R, on a static web page such as a pkgdown site, a blog or GitHub Pages. An explorer from <code><a href="reference/grafts.html">grafts()</a></code> in an R Markdown or Quarto chunk, or in Shiny with <code><a href="reference/grafts-shiny.html">renderGrafts()</a></code>, is written into the page with every series, and a page can hold several explorers. <code><a href="reference/grafts_save.html">grafts_save()</a></code> writes one to a single HTML file.</p>
+<div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">tourism</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/grafts.html">grafts</a></span><span class="op">(</span><span class="va">tourism_agg</span>, forecasts <span class="op">=</span> <span class="va">tourism_fc</span>,</span>
+<span>                  options <span class="op">=</span> <span class="fu"><a href="reference/grafts_options.html">grafts_options</a></span><span class="op">(</span>height <span class="op">=</span> <span class="fl">600</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="va">tourism</span>  <span class="co"># in a chunk</span></span>
+<span><span class="fu"><a href="reference/grafts_save.html">grafts_save</a></span><span class="op">(</span><span class="va">tourism</span>, <span class="st">"tourism.html"</span><span class="op">)</span></span></code></pre></div>
+<p><code><a href="reference/grafts_options.html">grafts_options()</a></code> chooses the views offered, the starting view and theme, and whether visitors’ choices persist, wherever the explorer goes. Whether series add up to their parents is detected, hiding the Stacked view and share scales for means.</p>
+<div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="reference/grafts.html">grafts</a></span><span class="op">(</span><span class="va">tourism_agg</span>, options <span class="op">=</span> <span class="fu"><a href="reference/grafts_options.html">grafts_options</a></span><span class="op">(</span></span>
+<span>  views <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"grid"</span>, <span class="st">"season"</span><span class="op">)</span>, theme <span class="op">=</span> <span class="st">"dark"</span>, persist <span class="op">=</span> <span class="cn">FALSE</span></span>
+<span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
+<p>Every series is written into the page, so large collections are better served from R, in the console or with <code><a href="reference/grafts_api.html">grafts_api()</a></code>. Embedded explorers use the system’s UI font, unless the page loads <a href="https://fonts.google.com/specimen/Source+Sans+3" class="external-link">Source Sans 3</a> as the app does.</p>
 </div>
 </div>
   </main><aside class="col-md-3"><div class="links">
