@@ -29,7 +29,7 @@ grafts_measure(proxy, measure)
 
 grafts_reset(proxy)
 
-grafts_update(proxy, explorer)
+grafts_update(proxy, explorer, lazy = NULL)
 }
 \arguments{
 \item{outputId}{The id of the output, as given to \code{\link[=graftsOutput]{graftsOutput()}} in the
@@ -58,6 +58,10 @@ total of New South Wales, and \code{list()} the total of everything.}
 \item{measure}{One of the data's numeric measured variables.}
 
 \item{explorer}{An explorer from \code{\link[=grafts]{grafts()}} with the new data.}
+
+\item{lazy}{Serve each series through the session when it is drawn, rather
+than writing them all into the page. \code{NULL} (the default) serves data
+with more than 250,000 values.}
 }
 \description{
 \code{graftsProxy()} points at an explorer drawn by \code{\link[=renderGrafts]{renderGrafts()}}, to change

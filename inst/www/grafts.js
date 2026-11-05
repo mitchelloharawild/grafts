@@ -1920,6 +1920,21 @@
       }
     };
   }
+  // The structure given, and the series asked for from `url` as Shiny serves
+  // them (grafts_shiny_data() in static.R), which already holds a query
+  function served(spec, url) {
+    return {
+      spec: function () { return Promise.resolve(spec); },
+      series: function (measure, ids, raw) {
+        return getJSON(url + '&measure=' + encodeURIComponent(measure) + '&raw=' + (raw ? 1 : 0) + '&ids=' + ids.join(','));
+      }
+    };
+  }
+  // The source of a payload from R: served series, else full series inline
+  function fromPayload(payload) {
+    var x = typeof payload === 'string' ? JSON.parse(payload) : payload;
+    return x.url ? served(x.spec, x.url) : inline(x);
+  }
   // A storage key for a spec: a hash of its structure, keys, measures and
   // number of series, so other data on the same origin keep their own
   function hash(s) {
@@ -1960,5 +1975,5 @@
       });
   }
 
-  window.Grafts = { mount: mount, remote: remote, inline: inline };
+  window.Grafts = { mount: mount, remote: remote, inline: inline, served: served, fromPayload: fromPayload };
 })();

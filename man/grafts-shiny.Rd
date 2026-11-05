@@ -8,7 +8,7 @@
 \usage{
 graftsOutput(outputId, width = "100\%", height = "600px")
 
-renderGrafts(expr, env = parent.frame(), quoted = FALSE)
+renderGrafts(expr, env = parent.frame(), quoted = FALSE, lazy = NULL)
 }
 \arguments{
 \item{outputId}{Output variable to read from.}
@@ -20,6 +20,10 @@ renderGrafts(expr, env = parent.frame(), quoted = FALSE)
 \item{env}{The environment in which to evaluate \code{expr}.}
 
 \item{quoted}{Is \code{expr} a quoted expression (with \code{quote()})?}
+
+\item{lazy}{Serve each series through the session when it is drawn, rather
+than writing them all into the page. \code{NULL} (the default) serves data
+with more than 250,000 values.}
 }
 \description{
 Shows an explorer from \code{\link[=grafts]{grafts()}} in Shiny. The explorer tells the app what
@@ -27,10 +31,10 @@ it shows, through inputs named after its output, and \code{\link[=graftsProxy]{g
 the app steer it and replace its data.
 }
 \details{
-Every series is written into the page, which suits small data: a Shiny app
-can't send a series at a time, so to explore large data, serve the explorer
-with \code{\link[=grafts_api]{grafts_api()}} or \code{\link[=grafts_serve]{grafts_serve()}} and link to it or embed it in an
-\verb{<iframe>}.
+Small data are written into the page. Large data stay in R, which serves
+each series through the Shiny session when it is drawn, as the console and
+\code{\link[=grafts_api]{grafts_api()}} do. By default data with more than 250,000 values are
+served; set \code{lazy} to choose.
 
 For an output \code{"ts"}, the app can read these inputs:
 \itemize{

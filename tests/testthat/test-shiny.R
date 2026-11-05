@@ -78,3 +78,38 @@ test_that("input handlers make data frames of series and vectors of names", {
   expect_equal(shiny:::inputHandlers$get("grafts.names")(list(), NULL, "x"), character())
 })
 
+test_that("series requests are checked", {
+  m <- model_of(small_agg())
+  q <- series_query(m, list(ids = "0,1", raw = "1"), 10)
+  expect_equal(q, list(measure = m$spec$measure, ids = 0:1, raw = TRUE))
+  expect_match(series_query(m, list(ids = "0,x"), 10)$error, "Unknown")
+  expect_match(series_query(m, list(ids = as.character(m$n)), 10)$error, "Unknown")
+  expect_match(series_query(m, list(measure = "no", ids = "0"), 10)$error, "Unknown")
+  expect_match(series_query(m, list(ids = "0,1,2"), 2)$error, "At most 2")
+})
+
+test_that("large data are served through the session", {
+  skip_if_not_installed("shiny")
+  x <- grafts(small_agg())
+  s <- mock_session()
+  # Small data are written into the page, large or asked for are served
+  expect_named(jsonlite::fromJSON(shiny_payload(x, session = s)), c("spec", "series"))
+  json <- shiny_payload(x, lazy = TRUE, session = s)
+  p <- jsonlite::fromJSON(json, simplifyVector = FALSE)
+  expect_named(p, c("spec", "url"))
+  expect_match(p$url, "^session/x/dataobj/grafts-.*\\?w=&nonce=n$")
+  expect_length(s$objs(), 1)
+  # The same data keep one name
+  shiny_payload(x, lazy = TRUE, session = s)
+  expect_length(s$objs(), 1)
+  # Without a session, everything is written into the page
+  expect_named(jsonlite::fromJSON(shiny_payload(x, lazy = TRUE, session = NULL)), c("spec", "series"))
+  expect_error(shiny_payload(x, lazy = "yes", session = s), "lazy")
+
+  obj <- s$objs()[[1]]
+  get <- function(query) obj$filter(obj$data, list(QUERY_STRING = query))
+  ok <- get("?w=&nonce=n&measure=y&raw=0&ids=0,1")
+  expect_equal(ok$status, 200L)
+  expect_named(jsonlite::fromJSON(ok$content), c("0", "1"))
+  expect_equal(get("?w=&nonce=n&ids=999")$status, 400L)
+})

@@ -1,5 +1,6 @@
-// grafts(): an explorer of the inline payload written by R. Rendering
-// again (as Shiny does) replaces the explorer drawn before.
+// grafts(): an explorer of the payload written by R: every series, or the
+// structure with a url that Shiny serves the series from. Rendering again
+// (as Shiny does) replaces the explorer drawn before.
 //
 // In Shiny the explorer tells the app what it shows, as the inputs
 // <id>_focus, _children, _pinned, _split, _view, _set, _theme and _measure,
@@ -16,7 +17,7 @@ HTMLWidgets.widget({
       Shiny.setInputValue(el.id + '_' + name + (TYPES[name] ? ':' + TYPES[name] : ''), value);
     }
     function mount(x, restore) {
-      return Grafts.mount(box, { source: Grafts.inline(x.payload), storageKey: x.storageKey, onChange: onChange, restore: restore });
+      return Grafts.mount(box, { source: Grafts.fromPayload(x.payload), storageKey: x.storageKey, onChange: onChange, restore: restore });
     }
     var widget = {
       renderValue: function (x) {

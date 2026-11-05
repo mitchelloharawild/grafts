@@ -78,14 +78,17 @@ grafts_save <- function(explorer, file, self_contained = TRUE) {
   invisible(file)
 }
 
-# The htmlwidget of an explorer, as knitted or rendered in Shiny
-as_widget <- function(x) {
+# The htmlwidget of an explorer, as knitted or rendered in Shiny. `payload` is
+# the JSON the page reads: every series, unless Shiny serves them (shiny.R).
+as_widget <- function(x, payload = NULL) {
   if (inherits(x, "htmlwidget")) return(x)
   x <- check_explorer(x, "x")
-  json <- explore_payload(x$model)
-  check_payload_size(json)
+  if (is.null(payload)) {
+    payload <- explore_payload(x$model)
+    check_payload_size(payload)
+  }
   # The payload is already JSON, which htmlwidgets writes as it is
-  payload <- list(payload = structure(json, class = "json"))
+  payload <- list(payload = structure(payload, class = "json"))
   htmlwidgets::createWidget(
     "grafts", payload, width = x$options$width, height = x$options$height, package = "grafts",
     elementId = x$options$element_id, dependencies = grafts_dependency(),
@@ -114,12 +117,12 @@ grafts_dependency <- function() {
   ))
 }
 
-check_payload_size <- function(json, max = 5e6) {
+check_payload_size <- function(json, max = 5e6, fix = "Serve large data a series at a time with {.fn grafts_api}, or by printing the explorer in the console.") {
   size <- nchar(json, type = "bytes")
   if (size > max) {
     cli::cli_warn(c(
       "The explorer's data take {prettyNum(round(size / 1e6, 1))} MB, which is slow to load in a page.",
-      i = "Serve large data a series at a time with {.fn grafts_api}, or by printing the explorer in the console."
+      i = fix
     ))
   }
 }

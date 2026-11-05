@@ -1,7 +1,8 @@
-# The explorer in Shiny. renderGrafts() shows an explorer from grafts(), with
-# every series written into the page; the widget tells the app what it shows
-# (the inputs <id>_focus and so on), and graftsProxy() steers it and replaces
-# its data without drawing it again.
+# The explorer in Shiny. renderGrafts() shows an explorer from grafts(); the
+# widget tells the app what it shows (the inputs <id>_focus and so on), and
+# graftsProxy() steers it and replaces its data without drawing it again. Small
+# data are written into the page; large data stay in R, which serves a series
+# at a time through the session (shiny_data()).
 
 #' Shiny bindings for grafts()
 #'
@@ -9,10 +10,10 @@
 #' it shows, through inputs named after its output, and [graftsProxy()] lets
 #' the app steer it and replace its data.
 #'
-#' Every series is written into the page, which suits small data: a Shiny app
-#' can't send a series at a time, so to explore large data, serve the explorer
-#' with [grafts_api()] or [grafts_serve()] and link to it or embed it in an
-#' `<iframe>`.
+#' Small data are written into the page. Large data stay in R, which serves
+#' each series through the Shiny session when it is drawn, as the console and
+#' [grafts_api()] do. By default data with more than 250,000 values are
+#' served; set `lazy` to choose.
 #'
 #' For an output `"ts"`, the app can read these inputs:
 #'
@@ -37,6 +38,9 @@
 #' @param expr An expression that returns an explorer from [grafts()].
 #' @param env The environment in which to evaluate `expr`.
 #' @param quoted Is `expr` a quoted expression (with `quote()`)?
+#' @param lazy Serve each series through the session when it is drawn, rather
+#'   than writing them all into the page. `NULL` (the default) serves data
+#'   with more than 250,000 values.
 #' @seealso [graftsProxy()] to steer the explorer and update its data.
 #' @examplesIf interactive()
 #' library(shiny)
@@ -58,11 +62,17 @@ graftsOutput <- function(outputId, width = "100%", height = "600px") {
 
 #' @rdname grafts-shiny
 #' @export
-renderGrafts <- function(expr, env = parent.frame(), quoted = FALSE) {
+renderGrafts <- function(expr, env = parent.frame(), quoted = FALSE, lazy = NULL) {
   if (!quoted) expr <- substitute(expr)
   # The explorer becomes a widget once evaluated
-  expr <- as.call(list(as_widget, expr))
+  expr <- as.call(list(shiny_widget, expr, lazy))
   htmlwidgets::shinyRenderWidget(expr, graftsOutput, env, quoted = TRUE)
+}
+
+shiny_widget <- function(x, lazy = NULL) {
+  if (inherits(x, "htmlwidget")) return(x)
+  x <- check_explorer(x, "x")
+  as_widget(x, shiny_payload(x, lazy))
 }
 
 #' Steer an explorer in Shiny
@@ -101,6 +111,7 @@ renderGrafts <- function(expr, env = parent.frame(), quoted = FALSE) {
 #' @param outputId The id of the output, as given to [graftsOutput()] in the
 #'   same module or app.
 #' @param session The Shiny session, by default the one running the server.
+#' @inheritParams grafts-shiny
 #' @seealso [renderGrafts()]
 #' @examplesIf interactive()
 #' library(shiny)
@@ -178,10 +189,9 @@ grafts_reset <- function(proxy) proxy_send(proxy, "reset", list())
 
 #' @rdname grafts-proxy
 #' @export
-grafts_update <- function(proxy, explorer) {
+grafts_update <- function(proxy, explorer, lazy = NULL) {
   explorer <- check_explorer(explorer)
-  payload <- explore_payload(explorer$model)
-  check_payload_size(payload)
+  payload <- shiny_payload(explorer, lazy, proxy$session)
   proxy_send(proxy, "update", list(payload = structure(payload, class = "json")))
 }
 
@@ -231,3 +241,39 @@ register_input_handlers <- function() {
   invisible()
 }
 .shiny <- new.env(parent = emptyenv())
+
+# ---- Data --------------------------------------------------------------------
+
+# The JSON the widget reads: the structure and every series, or the structure
+# and the url that the session serves series from. `lazy` defaults to data too
+# large to write into the page; without a session there is nothing to serve.
+shiny_payload <- function(x, lazy = NULL, session = shiny::getDefaultReactiveDomain()) {
+  model <- x$model
+  if (!(is.null(lazy) || isTRUE(lazy) || isFALSE(lazy))) abort("`lazy` must be `NULL`, `TRUE` or `FALSE`.")
+  lazy <- lazy %||% (sum(lengths(model$values)) > 2.5e5)
+  if (lazy && !is.null(session)) {
+    url <- shiny_data(model, session)
+    return(escape_json(to_json(list(spec = model$spec, url = url))))
+  }
+  json <- explore_payload(model)
+  check_payload_size(json, fix = "Set {.code lazy = TRUE} in {.fn renderGrafts} to send a series at a time.")
+  json
+}
+
+# Serve the series of a model through the session, as {path}api/series does,
+# and return the url (which already has a query) that asks for them. The same
+# data keep the same name, so drawing them again doesn't register them again.
+shiny_data <- function(model, session, max_ids = 1000) {
+  name <- paste0("grafts-", substr(rlang::hash(list(model$spec, model$values, model$fc, model$max_points)), 1, 16))
+  session$registerDataObj(name, model, function(data, req) {
+    query <- shiny::parseQueryString(req$QUERY_STRING)
+    q <- series_query(data, query, max_ids)
+    if (!is.null(q$error)) {
+      return(shiny::httpResponse(400L, "application/json", to_json(list(error = q$error))))
+    }
+    shiny::httpResponse(
+      200L, "application/json", to_json(explore_series(data, q$measure, q$ids, q$raw)),
+      headers = list("Cache-Control" = "private, no-store")
+    )
+  })
+}

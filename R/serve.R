@@ -86,18 +86,13 @@ grafts_api <- function(api, explorer, path = "/", max_ids = 1000) {
     model$spec
   }, serializers = json_serializer)
   api <- plumber2::api_get(api, paste0(path, "api/series"), function(request, query, response) {
-    measure <- query$measure %||% model$spec$measure
-    ids <- suppressWarnings(as.integer(unlist(strsplit(as.character(query$ids), ",", fixed = TRUE))))
-    if (!measure %in% model$spec$measures || anyNA(ids) || any(ids < 0 | ids >= model$n)) {
+    q <- series_query(model, query, max_ids)
+    if (!is.null(q$error)) {
       response$status <- 400L
-      return(list(error = "Unknown measure or series"))
+      return(list(error = q$error))
     }
-    if (length(ids) > max_ids) {
-      response$status <- 400L
-      return(list(error = paste("At most", max_ids, "series per request")))
-    }
-    if (fresh(request, response, list(measure, ids, query$raw))) return(NULL)
-    explore_series(model, measure, ids, raw = identical(query$raw, "1"))
+    if (fresh(request, response, list(q$measure, q$ids, query$raw))) return(NULL)
+    explore_series(model, q$measure, q$ids, q$raw)
   }, serializers = json_serializer)
 
   # The app's files, as routes rather than plumber2 statics, which can't be
@@ -163,6 +158,18 @@ grafts_serve <- function(explorer, port = serve_port(), host = serve_host(),
     interrupt = function(e) cli::cli_inform("Stopped exploring.")
   )
   invisible(api)
+}
+
+# The measure, series ids and rawness that a request for series asks for, or
+# the error to answer it with
+series_query <- function(model, query, max_ids) {
+  measure <- query$measure %||% model$spec$measure
+  ids <- suppressWarnings(as.integer(unlist(strsplit(as.character(query$ids), ",", fixed = TRUE))))
+  if (!measure %in% model$spec$measures || anyNA(ids) || any(ids < 0 | ids >= model$n)) {
+    return(list(error = "Unknown measure or series"))
+  }
+  if (length(ids) > max_ids) return(list(error = paste("At most", max_ids, "series per request")))
+  list(measure = measure, ids = ids, raw = identical(query$raw, "1"))
 }
 
 # Where an explorer is served by default: the options grafts.port and
