@@ -13,9 +13,11 @@ and options.}
 \item{file}{The HTML file to write.}
 
 \item{self_contained}{Write a single file holding the explorer's script,
-styles and data. When \code{FALSE}, \code{file} loads \code{grafts.js},
-\code{grafts.css} and \code{data.json} written beside it. Browsers only load
-\code{data.json} when the page is served over http(s), not opened from disk.}
+styles and data. When \code{FALSE}, \code{file} loads \code{grafts.js} and
+\code{grafts.css} written beside it, and its data from a \code{.json} file named
+after \code{file} (\code{page.html} loads \code{page-data.json}), so pages in one
+directory share the script and styles but not their data. Browsers only
+load the data when the page is served over http(s), not opened from disk.}
 }
 \value{
 \code{file}, invisibly.

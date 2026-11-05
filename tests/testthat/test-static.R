@@ -38,13 +38,13 @@ test_that("grafts_save() writes a page holding the payload", {
   file <- tempfile(fileext = ".html")
   expect_identical(grafts_save(grafts(agg, options = grafts_options(height = 500)), file), file)
   html <- paste(readLines(file), collapse = "\n")
-  json <- sub('.*<script type="application/json" id="gx-data">(.*?)</script>.*', "\\1", html)
+  json <- sub('.*<script type="application/json" id="grafts-data">(.*?)</script>.*', "\\1", html)
   expect_false(grepl("</script", json, fixed = TRUE))
   expect_match(json, "\\u003c\\/script>Work", fixed = TRUE)
   p <- jsonlite::fromJSON(json, simplifyVector = FALSE)
   expect_named(p$series, c("y", "z"))
   expect_match(html, "Grafts.mount", fixed = TRUE)
-  expect_match(html, "body > .gx { height: 500px; }", fixed = TRUE)
+  expect_match(html, "body > .grafts-root { height: 500px; }", fixed = TRUE)
   expect_false(grepl("fonts.googleapis", html, fixed = TRUE))
 })
 
@@ -52,11 +52,24 @@ test_that("grafts_save() can write its script, styles and data beside the page",
   dir <- tempfile()
   dir.create(dir)
   grafts_save(grafts(small_agg()), file.path(dir, "index.html"), self_contained = FALSE)
-  expect_setequal(list.files(dir), c("index.html", "grafts.js", "grafts.css", "data.json"))
-  p <- jsonlite::fromJSON(file.path(dir, "data.json"), simplifyVector = FALSE)
+  expect_setequal(list.files(dir), c("index.html", "grafts.js", "grafts.css", "index-data.json"))
+  p <- jsonlite::fromJSON(file.path(dir, "index-data.json"), simplifyVector = FALSE)
   expect_named(p, c("spec", "series"))
   html <- paste(readLines(file.path(dir, "index.html")), collapse = "\n")
-  expect_match(html, "fetch('data.json')", fixed = TRUE)
+  expect_match(html, "fetch(\"index-data.json\")", fixed = TRUE)
+})
+
+test_that("pages saved beside each other keep their own data, and a title", {
+  dir <- tempfile()
+  dir.create(dir)
+  a <- grafts(small_agg(), options = grafts_options(title = "A <b>"))
+  b <- grafts(small_agg(), measure = z)
+  grafts_save(a, file.path(dir, "a.html"), self_contained = FALSE)
+  grafts_save(b, file.path(dir, "b.html"), self_contained = FALSE)
+  expect_setequal(list.files(dir), c("a.html", "b.html", "a-data.json", "b-data.json", "grafts.js", "grafts.css"))
+  expect_match(paste(readLines(file.path(dir, "a.html")), collapse = "\n"), "<title>A &lt;b&gt;</title>", fixed = TRUE)
+  m <- function(f) jsonlite::fromJSON(file.path(dir, f), simplifyVector = FALSE)$spec$measure
+  expect_equal(c(m("a-data.json"), m("b-data.json")), c("y", "z"))
 })
 
 test_that("an explorer becomes a widget holding the payload as JSON", {

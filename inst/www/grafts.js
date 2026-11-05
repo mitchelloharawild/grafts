@@ -482,9 +482,9 @@
   // Pinning while the children are drawn flashes the Pinned count instead
   Explorer.prototype.flashPins = function () {
     var b = this.setBtns[1].b;
-    b.classList.remove('gx-flash');
+    b.classList.remove('grafts-flash');
     void b.offsetWidth;
-    b.classList.add('gx-flash');
+    b.classList.add('grafts-flash');
   };
 
   // Hovering a node (or a plot) highlights the series everywhere it is drawn
@@ -493,7 +493,7 @@
     this.state.hover = id;
     this.state.hoverFrom = from;
     var self = this;
-    Object.keys(this.nodeEls).forEach(function (k) { self.nodeEls[k].box.classList.toggle('gx-hover', +k === id); });
+    Object.keys(this.nodeEls).forEach(function (k) { self.nodeEls[k].box.classList.toggle('grafts-hover', +k === id); });
     this.renderPeek();
     this.applyHighlight();
   };
@@ -550,29 +550,29 @@
     root.textContent = '';
 
     // Columns
-    var main = this.main = el('div', 'gx-main', root);
-    var left = el('div', 'gx-col gx-left', main);
-    var colSplit = el('div', 'gx-split gx-split-col', main);
-    var right = el('div', 'gx-col gx-right', main);
+    var main = this.main = el('div', 'grafts-main', root);
+    var left = el('div', 'grafts-col grafts-left', main);
+    var colSplit = el('div', 'grafts-split grafts-split-col', main);
+    var right = el('div', 'grafts-col grafts-right', main);
 
     // The series graph, with the layout and theme buttons in its header and
     // the count of series drawn in a corner
-    var gp = el('section', 'gx-pane gx-graph-pane', left);
-    var gh = el('div', 'gx-pane-head', gp, 'Series graph');
-    var tools = el('div', 'gx-tools', gh);
-    var help = el('button', 'gx-btn gx-icon', tools, '?');
+    var gp = el('section', 'grafts-pane grafts-graph-pane', left);
+    var gh = el('div', 'grafts-pane-head', gp, 'Series graph');
+    var tools = el('div', 'grafts-tools', gh);
+    var help = el('button', 'grafts-btn grafts-icon', tools, '?');
     help.type = 'button';
     help.title = 'Shortcuts';
     help.setAttribute('aria-label', 'Shortcuts');
     help.setAttribute('aria-expanded', 'false');
     help.addEventListener('click', function () { self.toggleHelp(); });
-    var reset = el('button', 'gx-btn gx-icon', tools);
+    var reset = el('button', 'grafts-btn grafts-icon', tools);
     reset.type = 'button';
     reset.title = 'Reset layout';
     reset.setAttribute('aria-label', 'Reset layout');
     icon(reset, 'reset');
     reset.addEventListener('click', function () { self.size = null; self.persist(); self.applySize(); });
-    var theme = this.themeBtn = el('button', 'gx-btn gx-icon', tools);
+    var theme = this.themeBtn = el('button', 'grafts-btn grafts-icon', tools);
     theme.type = 'button';
     theme.addEventListener('click', function () {
       var i = THEMES.map(function (x) { return x[0]; }).indexOf(self.theme);
@@ -580,21 +580,21 @@
     });
     var onScheme = function () { if (self.theme === 'system') self.restyle(); };
     if (darkQuery) this.listen(darkQuery, 'change', onScheme);
-    this.graph = el('div', 'gx-pane-body', gp);
-    this.layer = el('div', 'gx-layer', this.graph);
-    this.world = el('div', 'gx-world', this.layer);
-    this.peek = el('div', 'gx-peek', this.graph);
+    this.graph = el('div', 'grafts-pane-body', gp);
+    this.layer = el('div', 'grafts-layer', this.graph);
+    this.world = el('div', 'grafts-world', this.layer);
+    this.peek = el('div', 'grafts-peek', this.graph);
     this.peek.setAttribute('aria-hidden', 'true');
-    this.countEl = el('div', 'gx-count', this.graph);
+    this.countEl = el('div', 'grafts-count', this.graph);
     this.countEl.title = 'Series drawn';
-    this.startEl = el('div', 'gx-start', this.graph, 'Click a node to split it');
-    var card = this.helpCard = el('dl', 'gx-help', this.graph);
+    this.startEl = el('div', 'grafts-start', this.graph, 'Click a node to split it');
+    var card = this.helpCard = el('dl', 'grafts-help', this.graph);
     HELP.forEach(function (h) { el('dt', null, card, h[0]); el('dd', null, card, h[1]); });
     this.helpBtn = help;
-    var zoom = el('div', 'gx-zoom', this.graph);
+    var zoom = el('div', 'grafts-zoom', this.graph);
     [['+', 'Zoom in', function () { self.zoomBy(1.25); }], ['−', 'Zoom out', function () { self.zoomBy(0.8); }],
       ['⤢', 'Reset view', function () { self.resetCam(); }]].forEach(function (z) {
-      var b = el('button', 'gx-btn', zoom, z[0]);
+      var b = el('button', 'grafts-btn', zoom, z[0]);
       b.type = 'button';
       b.title = z[1];
       b.setAttribute('aria-label', z[1]);
@@ -602,60 +602,60 @@
     });
 
     // The dimension graph, headed by the structure
-    var dimSplit = el('div', 'gx-split gx-split-row', left);
-    var dp = el('section', 'gx-pane', left);
-    var dh = el('div', 'gx-pane-head', dp);
-    var structure = el('div', 'gx-structure', dh);
+    var dimSplit = el('div', 'grafts-split grafts-split-row', left);
+    var dp = el('section', 'grafts-pane', left);
+    var dh = el('div', 'grafts-pane-head', dp);
+    var structure = el('div', 'grafts-structure', dh);
     structure.title = 'Structure';
     this.terms = {};
     spec.structure.split(/([A-Za-z_.][A-Za-z0-9_.]*)/).forEach(function (t) {
       if (!t) return;
       var span = el('span', null, structure, t);
-      if (self.keys.indexOf(t) > -1) { span.className = 'gx-term'; self.terms[t] = span; }
+      if (self.keys.indexOf(t) > -1) { span.className = 'grafts-term'; self.terms[t] = span; }
     });
-    var db = this.dimsBody = el('div', 'gx-pane-body gx-dims-body', dp);
-    this.dimsSvg = svgEl('svg', db, { class: 'gx-dims-svg', role: 'img', 'aria-label': 'Dimension graph' });
+    var db = this.dimsBody = el('div', 'grafts-pane-body grafts-dims-body', dp);
+    this.dimsSvg = svgEl('svg', db, { class: 'grafts-dims-svg', role: 'img', 'aria-label': 'Dimension graph' });
 
     // The focused series, headed by the measure and the forecast models,
     // whose chips are their legend and switches
-    var fp = this.focusPane = el('section', 'gx-pane gx-focus-pane', right);
-    var fh = el('div', 'gx-pane-head', fp);
+    var fp = this.focusPane = el('section', 'grafts-pane grafts-focus-pane', right);
+    var fh = el('div', 'grafts-pane-head', fp);
     if (spec.measures.length > 1) {
-      var select = el('select', 'gx-measure', fh);
+      var select = el('select', 'grafts-measure', fh);
       select.setAttribute('aria-label', 'Measure');
       spec.measures.forEach(function (m) { el('option', null, select, m).value = m; });
       select.value = this.ui.measure;
       select.addEventListener('change', function () { self.ui.measure = select.value; self.render(); });
     } else {
-      el('span', 'gx-measure', fh, this.ui.measure);
+      el('span', 'grafts-measure', fh, this.ui.measure);
     }
-    this.focusHead = el('div', 'gx-series-head', fh);
+    this.focusHead = el('div', 'grafts-series-head', fh);
     if (this.fc) {
-      var models = this.modelsEl = el('div', 'gx-models', fh);
+      var models = this.modelsEl = el('div', 'grafts-models', fh);
       this.modelBtns = this.fc.models.map(function (m, i) {
-        var b = el('button', 'gx-model', models);
+        var b = el('button', 'grafts-model', models);
         b.type = 'button';
         b.title = m + ' forecasts of ' + self.fc.measure;
         b.style.color = self.modelCol(i);
-        el('span', 'gx-model-key', b);
+        el('span', 'grafts-model-key', b);
         el('span', null, b, m).style.color = 'var(--ink)';
         b.addEventListener('click', function () { self.ui.models[m] = !self.ui.models[m]; self.renderControls(); self.renderRight(); });
         return { b: b, m: m };
       });
-      var iv = this.intervalBtn = el('button', 'gx-model gx-iv', models);
+      var iv = this.intervalBtn = el('button', 'grafts-model grafts-iv', models);
       iv.type = 'button';
       iv.title = 'Forecast intervals';
-      el('span', 'gx-iv-key', iv);
+      el('span', 'grafts-iv-key', iv);
       el('span', null, iv, spec.forecast.level.join('/') + '%');
       iv.addEventListener('click', function () { self.ui.intervals = !self.ui.intervals; self.persist(); self.renderControls(); self.renderRight(); });
     }
-    this.focusBody = el('div', 'gx-pane-body', fp);
-    var focusSplit = el('div', 'gx-split gx-split-row', right);
-    var vp = el('section', 'gx-pane', right);
-    var vh = el('div', 'gx-pane-head', vp);
+    this.focusBody = el('div', 'grafts-pane-body', fp);
+    var focusSplit = el('div', 'grafts-split grafts-split-row', right);
+    var vp = el('section', 'grafts-pane', right);
+    var vh = el('div', 'grafts-pane-head', vp);
     // Which series the view draws. Disabled buttons stay focusable and keep
     // their tooltips, so they say why.
-    var sets = el('div', 'gx-seg gx-set', vh);
+    var sets = el('div', 'grafts-seg grafts-set', vh);
     sets.setAttribute('role', 'group');
     sets.setAttribute('aria-label', 'Series to draw');
     this.setBtns = ['children', 'pinned'].map(function (v) {
@@ -665,10 +665,10 @@
         if (b.getAttribute('aria-disabled') === 'true') return;
         self.ui.set = v; self.persist(); self.renderRight();
       });
-      b.addEventListener('animationend', function () { b.classList.remove('gx-flash'); });
+      b.addEventListener('animationend', function () { b.classList.remove('grafts-flash'); });
       return { b: b, v: v };
     });
-    var tabs = el('div', 'gx-tabs', vh);
+    var tabs = el('div', 'grafts-tabs', vh);
     tabs.setAttribute('role', 'tablist');
     this.tabBtns = this.options.tabs.map(function (t) {
       var b = el('button', null, tabs, t[1]);
@@ -693,21 +693,21 @@
     // The overlay's log scale works with values or indexes alike
     this.logSeg = this.segmented(vh, [[false, 'Linear'], [true, 'Log y']], function () { return self.opts().overlayLog; },
       function (v) { self.opts().overlayLog = v; self.persist(); self.renderRight(); }, 'Overlay y axis');
-    var sort = this.sortEl = el('span', 'gx-sort', vh, 'Sort');
+    var sort = this.sortEl = el('span', 'grafts-sort', vh, 'Sort');
     this.sortSeg = this.segmented(sort, SORTS, function () { return self.opts().sort; },
       function (v) { self.opts().sort = v; self.persist(); self.renderRight(); }, 'Sort series');
-    var end = el('div', 'gx-head-end', vh);
-    var size = this.sizeEl = el('label', 'gx-size', end, 'Plot size');
+    var end = el('div', 'grafts-head-end', vh);
+    var size = this.sizeEl = el('label', 'grafts-size', end, 'Plot size');
     var slider = el('input', null, size);
     slider.type = 'range'; slider.min = 120; slider.max = 420; slider.step = 10; slider.value = this.ui.cell;
     slider.addEventListener('input', function () { self.ui.cell = +slider.value; self.persist(); self.renderRight(); });
-    var pinAll = this.pinAllBtn = el('button', 'gx-btn gx-pin-all', end);
+    var pinAll = this.pinAllBtn = el('button', 'grafts-btn grafts-pin-all', end);
     pinAll.type = 'button';
     pinAll.addEventListener('click', function () {
       var g = self.focusGroup();
       if (g) self.setPins(g.kids, !self.allPinned(g));
     });
-    this.view = el('div', 'gx-pane-body gx-view', vp);
+    this.view = el('div', 'grafts-pane-body grafts-view', vp);
 
     // Splitters: drag to resize, double-click to reset that pane
     var mainBox = function () { return main.getBoundingClientRect(); };
@@ -736,7 +736,7 @@
     });
     right.addEventListener('mouseleave', function () { if (self.state.hoverFrom === 'plot') self.setHover(null, null); });
 
-    this.toastEl = el('div', 'gx-toast', root);
+    this.toastEl = el('div', 'grafts-toast', root);
     this.toastEl.setAttribute('role', 'status');
 
     var resized = null;
@@ -770,7 +770,7 @@
   };
 
   Explorer.prototype.segmented = function (parent, opts, get, set, label) {
-    var seg = el('div', 'gx-seg', parent);
+    var seg = el('div', 'grafts-seg', parent);
     seg.setAttribute('role', 'group');
     seg.setAttribute('aria-label', label);
     var btns = opts.map(function (o) {
@@ -789,14 +789,14 @@
     handle.addEventListener('pointerdown', function (ev) {
       ev.preventDefault();
       handle.setPointerCapture(ev.pointerId);
-      handle.classList.add('gx-on');
-      self.root.classList.add('gx-dragging');
+      handle.classList.add('grafts-on');
+      self.root.classList.add('grafts-dragging');
       var onMove = function (e) { move({ x: e.clientX, y: e.clientY }, self.size); self.applySize(); };
       var onUp = function () {
         handle.removeEventListener('pointermove', onMove);
         handle.removeEventListener('pointerup', onUp);
-        handle.classList.remove('gx-on');
-        self.root.classList.remove('gx-dragging');
+        handle.classList.remove('grafts-on');
+        self.root.classList.remove('grafts-dragging');
         self.persist();
         self.renderGraph();
       };
@@ -825,10 +825,10 @@
     }, { passive: false });
     layer.addEventListener('pointerdown', function (ev) {
       if (!Object.keys(pts).length) moved = 0;
-      if (ev.button !== 0 || ev.target.closest('.gx-node, .gx-more, .gx-menu')) return;
+      if (ev.button !== 0 || ev.target.closest('.grafts-node, .grafts-more, .grafts-menu')) return;
       pts[ev.pointerId] = { x: ev.clientX, y: ev.clientY };
       layer.setPointerCapture(ev.pointerId);
-      layer.classList.add('gx-panning');
+      layer.classList.add('grafts-panning');
     });
     layer.addEventListener('pointermove', function (ev) {
       var p = pts[ev.pointerId];
@@ -848,13 +848,13 @@
     var up = function (ev) {
       if (!pts[ev.pointerId]) return;
       delete pts[ev.pointerId];
-      if (!Object.keys(pts).length) layer.classList.remove('gx-panning');
+      if (!Object.keys(pts).length) layer.classList.remove('grafts-panning');
     };
     layer.addEventListener('pointerup', up);
     layer.addEventListener('pointercancel', up);
     layer.addEventListener('click', function (ev) { if (moved > 4) { ev.stopImmediatePropagation(); moved = 0; } }, true);
     layer.addEventListener('dblclick', function (ev) {
-      if (!ev.target.closest('.gx-node, .gx-more, .gx-menu')) self.resetCam();
+      if (!ev.target.closest('.grafts-node, .grafts-more, .grafts-menu')) self.resetCam();
     });
   };
   // Zoom by f about (cx, cy) in pane px, the pane's centre by default
@@ -893,16 +893,16 @@
   };
   Explorer.prototype.toggleHelp = function (on) {
     this.helpOpen = on == null ? !this.helpOpen : on;
-    this.helpCard.classList.toggle('gx-on', this.helpOpen);
+    this.helpCard.classList.toggle('grafts-on', this.helpOpen);
     this.helpBtn.setAttribute('aria-expanded', String(this.helpOpen));
   };
   // A message that shows for a few seconds
   Explorer.prototype.status = function (msg) {
     var t = this.toastEl;
     t.textContent = msg;
-    t.classList.add('gx-on');
+    t.classList.add('grafts-on');
     clearTimeout(this.toastTimer);
-    this.toastTimer = setTimeout(function () { t.classList.remove('gx-on'); }, 4000);
+    this.toastTimer = setTimeout(function () { t.classList.remove('grafts-on'); }, 4000);
   };
 
   // ---- Render ----------------------------------------------------------------
@@ -919,7 +919,7 @@
     // Underline the variables last split by, in the colour of their chain
     Object.keys(this.terms).forEach(function (t) {
       var on = !!lastG && lastG.e.vars.indexOf(t) > -1;
-      self.terms[t].classList.toggle('gx-active', on);
+      self.terms[t].classList.toggle('grafts-active', on);
       self.terms[t].style.textDecorationColor = on ? self.varCol[t] : 'transparent';
     });
     this.countEl.textContent = Object.keys(this.visibleSet()).length + ' / ' + this.series.length;
@@ -931,14 +931,14 @@
 
   Explorer.prototype.makeNode = function (id) {
     var self = this, s = this.series[id];
-    var b = el('button', 'gx-node', this.world);
+    var b = el('button', 'grafts-node', this.world);
     b.type = 'button';
     b.title = this.fullLabel(s);
     b.setAttribute('aria-label', this.fullLabel(s));
-    var ring = el('div', 'gx-ring', b);
-    el('div', 'gx-halo', ring);
-    var dot = el('div', 'gx-dot', ring);
-    var label = el('div', 'gx-label', b);
+    var ring = el('div', 'grafts-ring', b);
+    el('div', 'grafts-halo', ring);
+    var dot = el('div', 'grafts-dot', ring);
+    var label = el('div', 'grafts-label', b);
     b.addEventListener('click', function (ev) {
       ev.stopPropagation();
       if (ev.shiftKey) { self.togglePin(id); return; }
@@ -1064,7 +1064,7 @@
     Object.keys(want).forEach(function (k) {
       if (self.edgeEls[k]) return;
       var w = want[k], a = pos[w.g.parent];
-      var box = el('div', 'gx-edge', layer), line = el('div', 'gx-line', box);
+      var box = el('div', 'grafts-edge', layer), line = el('div', 'grafts-line', box);
       css(box, lineStyle(a.x, a.y + 30, a.x, a.y + 31));
       line.style.transform = 'scaleX(0)';
       self.edgeEls[k] = { box: box, line: line, parent: w.g.parent };
@@ -1098,12 +1098,12 @@
       css(e.box, { left: px(p.x - 18), top: px(p.y - 18), opacity: 1, transform: 'scale(1)' });
       e.label.textContent = L.labelOf[id];
       e.dot.style.background = self.level(byId[id].depth);
-      e.box.classList.toggle('gx-tilt', !!L.tilt[byId[id].depth]);
-      e.box.classList.toggle('gx-focus', +id === st.focus);
-      e.box.classList.toggle('gx-menu-on', +id === st.menu);
-      e.box.classList.toggle('gx-multi', (parents[id] || []).length > 1);
-      e.box.classList.toggle('gx-pinned', st.pins.indexOf(+id) > -1);
-      e.box.classList.toggle('gx-hover', +id === st.hover);
+      e.box.classList.toggle('grafts-tilt', !!L.tilt[byId[id].depth]);
+      e.box.classList.toggle('grafts-focus', +id === st.focus);
+      e.box.classList.toggle('grafts-menu-on', +id === st.menu);
+      e.box.classList.toggle('grafts-multi', (parents[id] || []).length > 1);
+      e.box.classList.toggle('grafts-pinned', st.pins.indexOf(+id) > -1);
+      e.box.classList.toggle('grafts-hover', +id === st.hover);
     });
 
     // Edges leave the parent below its label and arrive at the top of the child's dot
@@ -1112,7 +1112,7 @@
       css(e.box, lineStyle(a.x, a.y + (L.tilt[byId[w.g.parent].depth] ? 16 : 34), b.x, b.y - 14));
       e.line.style.transform = 'scaleX(1)';
       e.line.style.borderTopColor = w.g.e.col;
-      e.box.classList.toggle('gx-second', (parents[w.child] || []).length > 1);
+      e.box.classList.toggle('grafts-second', (parents[w.child] || []).length > 1);
     });
 
     // "+k more" chips for wide groups
@@ -1128,7 +1128,7 @@
     L.more.forEach(function (m) {
       var e = self.moreEls[m.key];
       if (!e) {
-        e = self.moreEls[m.key] = el('button', 'gx-more', layer);
+        e = self.moreEls[m.key] = el('button', 'grafts-more', layer);
         e.type = 'button';
         e.addEventListener('click', function (ev) { ev.stopPropagation(); st.showAll[m.key] = true; self.render(); });
       }
@@ -1137,7 +1137,7 @@
       css(e, { left: px(m.x), top: px(m.y) });
     });
 
-    this.startEl.classList.toggle('gx-on', !st.groups.length);
+    this.startEl.classList.toggle('grafts-on', !st.groups.length);
     this.renderMenu(pos, L);
     this.renderPeek();
   };
@@ -1147,17 +1147,17 @@
     if (this.menuEl) { this.menuEl.remove(); this.menuEl = null; }
     if (st.menu == null || !pos[st.menu]) { st.menu = null; return; }
     var s = this.series[st.menu], p = pos[st.menu], splits = this.splits(s);
-    var menu = this.menuEl = el('div', 'gx-menu', this.layer);
+    var menu = this.menuEl = el('div', 'grafts-menu', this.layer);
     menu.addEventListener('click', function (ev) { ev.stopPropagation(); });
-    if (!splits.length) el('span', 'gx-tag', menu, 'no further split');
+    if (!splits.length) el('span', 'grafts-tag', menu, 'no further split');
     splits.forEach(function (e) {
       var done = !!self.findGroup(s.id + '~' + e.id), n = self.children(s, e).length;
-      var c = el('button', 'gx-chip' + (done ? ' gx-done' : ''), menu);
+      var c = el('button', 'grafts-chip' + (done ? ' grafts-done' : ''), menu);
       c.type = 'button';
       c.disabled = !n;
-      css(el('span', 'gx-key', c), { color: e.col });
+      css(el('span', 'grafts-key', c), { color: e.col });
       el('span', null, c, e.name);
-      el('span', 'gx-n', c, done ? '✓ shown' : String(n));
+      el('span', 'grafts-n', c, done ? '✓ shown' : String(n));
       c.addEventListener('click', function () { self.chipHover = null; self.choose(s.id, e); });
       var hot = function (on) { return function () { self.chipHover = on ? e.id : null; self.renderDims(); }; };
       c.addEventListener('mouseenter', hot(true));
@@ -1184,14 +1184,14 @@
     peek.textContent = '';
     this.peekAt = null;
     var on = id != null && st.hoverFrom === 'graph' && st.menu !== id && !!this.pos && !!this.pos[id] && !this.shown()[id];
-    peek.classList.toggle('gx-on', on);
+    peek.classList.toggle('grafts-on', on);
     if (!on) return;
     var s = this.series[id], d = this.data(id, false);
     if (d === undefined) this.need([id], false);
-    var head = el('div', 'gx-cell-head', peek);
-    css(el('span', 'gx-swatch', head), { background: this.level(s.depth) });
-    el('span', 'gx-cell-label', head, this.fullLabel(s));
-    this.timePlot(el('div', 'gx-peek-plot', peek), 200, 64, [{ id: id, d: d }], { fc: true, compact: true, noX: true });
+    var head = el('div', 'grafts-cell-head', peek);
+    css(el('span', 'grafts-swatch', head), { background: this.level(s.depth) });
+    el('span', 'grafts-cell-label', head, this.fullLabel(s));
+    this.timePlot(el('div', 'grafts-peek-plot', peek), 200, 64, [{ id: id, d: d }], { fc: true, compact: true, noX: true });
     this.peekAt = this.pos[id];
     this.placePeek();
   };
@@ -1235,16 +1235,16 @@
     this.spec.dims.edges.forEach(function (e) {
       var a = nodes[e.from], b = nodes[e.to], out = a === active;
       svgEl('line', svg, {
-        class: 'gx-de' + (out ? ' gx-out' : '') + (out && self.chipHover === e.id ? ' gx-hot' : ''),
+        class: 'grafts-de' + (out ? ' grafts-out' : '') + (out && self.chipHover === e.id ? ' grafts-hot' : ''),
         x1: a.x * U, y1: a.y * V, x2: b.x * U, y2: b.y * V, stroke: e.col
       });
     });
     nodes.forEach(function (d) {
-      var g = svgEl('g', svg, { class: 'gx-dn' + (seen[d.key] ? ' gx-seen' : '') + (d === active ? ' gx-on' : '') }), l = lab(d);
+      var g = svgEl('g', svg, { class: 'grafts-dn' + (seen[d.key] ? ' grafts-seen' : '') + (d === active ? ' grafts-on' : '') }), l = lab(d);
       svgEl('circle', g, { cx: d.x * U, cy: d.y * V, r: 6 });
       var t = svgEl('text', g, { x: d.x * U + l[0], y: d.y * V + l[1] + 4, 'text-anchor': l[2] });
       t.appendChild(document.createTextNode(d.name + ' '));
-      svgEl('tspan', t, { class: 'gx-dn-n' }).textContent = d.n;
+      svgEl('tspan', t, { class: 'grafts-dn-n' }).textContent = d.n;
     });
   };
 
@@ -1293,8 +1293,8 @@
 
   Explorer.prototype.seriesHead = function (head, s) {
     head.textContent = '';
-    css(el('span', 'gx-swatch', head), { background: this.level(s.depth) });
-    el('span', 'gx-series-label', head, this.fullLabel(s));
+    css(el('span', 'grafts-swatch', head), { background: this.level(s.depth) });
+    el('span', 'grafts-series-label', head, this.fullLabel(s));
   };
 
   // A time plot of `lines` ({id, d, color, width, dash}), each with forecasts
@@ -1304,7 +1304,7 @@
     var self = this;
     o = o || {};
     if (lines.some(function (l) { return !l.d; })) {
-      el('div', 'gx-empty', box, 'Loading…');
+      el('div', 'grafts-empty', box, 'Loading…');
       return false;
     }
     var models = o.fc ? this.models() : [], levels = this.fc ? this.fc.level : [];
@@ -1313,17 +1313,17 @@
     var ml = o.noY ? 6 : o.compact ? YLAB : 44, mb = o.noX ? 4 : 18, mt = 6, mr = 6;
     var X = function (x) { return ml + (x - xMin) / ((x1 - xMin) || 1) * (w - ml - mr); };
     var Y = function (v) { return h - mb - (v - dom[0]) / ((dom[1] - dom[0]) || 1) * (h - mt - mb); };
-    var svg = svgEl('svg', box, { class: 'gx-plot', width: Math.max(0, w).toFixed(0), height: Math.max(0, h).toFixed(0) });
+    var svg = svgEl('svg', box, { class: 'grafts-plot', width: Math.max(0, w).toFixed(0), height: Math.max(0, h).toFixed(0) });
     var g = svgEl('g', svg), ph = h - mt - mb;
     // A tick every 45px, but three on a percent axis with room, so 0–100% gets its middle
     var nt = clamp(Math.floor(ph / 45), o.pct && ph >= 60 ? 3 : 2, 5);
     this.yAxis(g, dom, Y, ml, w - mr, nt, o.noY ? null : o.pct ? pctLabel : o.log ? logLabel : tickLabel, o.log ? logTicks(dom, nt) : null);
     if (!o.noX) this.xAxis(g, xMin, x1, X, h - mb, o.xTicks);
-    if ((models.length || o.now) && x1 >= this.spec.history) svgEl('line', g, { class: 'gx-now', x1: X(this.spec.history - 0.5), x2: X(this.spec.history - 0.5), y1: mt, y2: h - mb });
+    if ((models.length || o.now) && x1 >= this.spec.history) svgEl('line', g, { class: 'grafts-now', x1: X(this.spec.history - 0.5), x2: X(this.spec.history - 0.5), y1: mt, y2: h - mb });
     lines.forEach(function (l) {
       var gs = svgEl('g', svg, { 'data-sid': l.id });
       if (l.area) {
-        svgEl('path', gs, { class: 'gx-band', d: areaD(l.area.x, l.area.lo, l.area.hi, X, Y), fill: l.color, 'fill-opacity': l.area.op || .85 });
+        svgEl('path', gs, { class: 'grafts-band', d: areaD(l.area.x, l.area.lo, l.area.hi, X, Y), fill: l.color, 'fill-opacity': l.area.op || .85 });
         return;
       }
       models.forEach(function (m) {
@@ -1332,12 +1332,12 @@
         var col = l.fcColor || self.modelCol(self.fc.models.indexOf(m));
         if (self.ui.intervals && !o.noBands) {
           levels.forEach(function (_, k) {
-            svgEl('path', gs, { class: 'gx-band', d: areaD(f.x, f.lo[k], f.hi[k], X, Y), fill: col, 'fill-opacity': self.P.bandOp * (0.12 + 0.12 * (levels.length - 1 - k)) });
+            svgEl('path', gs, { class: 'grafts-band', d: areaD(f.x, f.lo[k], f.hi[k], X, Y), fill: col, 'fill-opacity': self.P.bandOp * (0.12 + 0.12 * (levels.length - 1 - k)) });
           });
         }
-        svgEl('path', gs, { class: 'gx-fc', d: pathD(f.x, f.mean, X, Y), stroke: col, 'stroke-dasharray': l.fcColor ? '4 2' : null });
+        svgEl('path', gs, { class: 'grafts-fc', d: pathD(f.x, f.mean, X, Y), stroke: col, 'stroke-dasharray': l.fcColor ? '4 2' : null });
       });
-      var p = svgEl('path', gs, { class: 'gx-y', d: pathD(l.xs || xsOf(l.d), l.ys || l.d.y, X, Y) });
+      var p = svgEl('path', gs, { class: 'grafts-y', d: pathD(l.xs || xsOf(l.d), l.ys || l.d.y, X, Y) });
       if (l.color) p.style.stroke = l.color;
       if (l.width) p.style.strokeWidth = l.width;
       if (l.dash) p.setAttribute('stroke-dasharray', l.dash);
@@ -1368,8 +1368,8 @@
     }
     ticks.forEach(function (v) {
       var y = Y(v);
-      svgEl('line', g, { class: 'gx-tick-line', x1: x0, x2: x1, y1: y, y2: y });
-      if (fmt) svgEl('text', g, { class: 'gx-tick', x: x0 - 4, y: y + 3.5, 'text-anchor': 'end' }).textContent = fmt(v);
+      svgEl('line', g, { class: 'grafts-tick-line', x1: x0, x2: x1, y1: y, y2: y });
+      if (fmt) svgEl('text', g, { class: 'grafts-tick', x: x0 - 4, y: y + 3.5, 'text-anchor': 'end' }).textContent = fmt(v);
     });
   };
   // Ticks at the start of seasonal cycles where there are any, else evenly spaced times
@@ -1386,7 +1386,7 @@
       for (var j = Math.ceil(x0); j <= x1; j += step) at.push({ x: j, label: spec.times[j] });
     }
     at.forEach(function (t) {
-      svgEl('text', g, { class: 'gx-tick', x: X(t.x), y: y + 13, 'text-anchor': 'middle' }).textContent = t.label;
+      svgEl('text', g, { class: 'grafts-tick', x: X(t.x), y: y + 13, 'text-anchor': 'middle' }).textContent = t.label;
     });
   };
 
@@ -1395,7 +1395,7 @@
     this.seriesHead(this.focusHead, s);
     var body = this.focusBody;
     body.textContent = '';
-    var box = el('div', 'gx-plot-box', body);
+    var box = el('div', 'grafts-plot-box', body);
     var d = this.data(s.id, false);
     if (d === undefined) this.need([s.id], false);
     this.timePlot(box, box.clientWidth, box.clientHeight, [{ id: s.id, d: d }], { fc: true });
@@ -1406,7 +1406,7 @@
     view.textContent = '';
     if (tab === 'season' && !g) return this.renderSeason(s);
     if (!g) {
-      el('div', 'gx-empty', view, this.splits(s).length ? 'Click the node to split it' : 'No children: every key is fixed');
+      el('div', 'grafts-empty', view, this.splits(s).length ? 'Click the node to split it' : 'No children: every key is fixed');
       return;
     }
     if (tab === 'stacked') return this.renderStacked(g);
@@ -1455,30 +1455,30 @@
   Explorer.prototype.childGrid = function (g, shares, shared, plot) {
     var self = this, W = this.view.clientWidth - 24, cw = this.ui.cell, ch = Math.round(cw * 0.5);
     var cols = Math.max(1, Math.floor((W + 12) / (cw + 12)));
-    var box = el('div', 'gx-cells', this.view);
+    var box = el('div', 'grafts-cells', this.view);
     var once = !!shared && cols > 1, room = once ? YLAB - 6 : 0;
     var w = (W - (cols - 1) * 12 - room) / cols, w0 = w + room;
     box.style.gridTemplateColumns = 'minmax(0, ' + w0.toFixed(1) + 'fr)' + (cols > 1 ? ' repeat(' + (cols - 1) + ', minmax(0, ' + w.toFixed(1) + 'fr))' : '');
     g.kids.forEach(function (id, i) {
       var k = self.series[id];
-      var c = el('div', 'gx-cell', box);
+      var c = el('div', 'grafts-cell', box);
       c.setAttribute('data-sid', id);
-      c.addEventListener('click', function (ev) { if (!ev.target.closest('.gx-pin')) self.focusOn(id); });
-      var chd = el('div', 'gx-cell-head', c);
-      css(el('span', 'gx-swatch', chd), { background: self.level(k.depth) });
-      var label = el('button', 'gx-cell-label', chd, self.memberLabel(id, g));
+      c.addEventListener('click', function (ev) { if (!ev.target.closest('.grafts-pin')) self.focusOn(id); });
+      var chd = el('div', 'grafts-cell-head', c);
+      css(el('span', 'grafts-swatch', chd), { background: self.level(k.depth) });
+      var label = el('button', 'grafts-cell-label', chd, self.memberLabel(id, g));
       label.type = 'button';
       label.title = self.fullLabel(k);
       label.setAttribute('aria-label', 'Focus ' + self.fullLabel(k));
       if (shares[i] != null) self.shareBar(chd, shares[i], g.parent);
       if (g.shared.indexOf(id) > -1) {
-        var second = el('span', 'gx-fork', chd);
+        var second = el('span', 'grafts-fork', chd);
         second.title = 'Second parent';
         second.setAttribute('role', 'img');
         second.setAttribute('aria-label', 'Second parent');
         icon(second, 'fork');
       }
-      var on = self.state.pins.indexOf(id) > -1, pin = el('button', 'gx-pin', chd, '📌');
+      var on = self.state.pins.indexOf(id) > -1, pin = el('button', 'grafts-pin', chd, '📌');
       pin.type = 'button';
       pin.setAttribute('aria-pressed', String(on));
       pin.setAttribute('aria-label', (on ? 'Unpin ' : 'Pin ') + self.fullLabel(k));
@@ -1522,7 +1522,7 @@
 
   // A thin bar of a child's share of its parent's history total, so free scales keep a sense of size
   Explorer.prototype.shareBar = function (head, share, pid) {
-    var bar = el('span', 'gx-share', head);
+    var bar = el('span', 'grafts-share', head);
     var pct = isFinite(share) ? share : 0;
     css(el('i', null, bar), { width: (100 * clamp(pct, 0, 1)).toFixed(1) + '%' });
     bar.title = isFinite(share) ? +(100 * share).toFixed(1) + '% of ' + this.fullLabel(this.series[pid]) : 'Parent sums to zero';
@@ -1568,7 +1568,7 @@
     var missing = g.kids.concat([g.parent]).filter(function (id) { return self.data(id, true) === undefined; });
     if (missing.length) {
       this.need(missing, true);
-      el('div', 'gx-empty', this.view, 'Loading…');
+      el('div', 'grafts-empty', this.view, 'Loading…');
       return;
     }
     var n = this.spec.history, share = this.ui.sets.children.scales.stacked === 'share';
@@ -1633,12 +1633,12 @@
   // A key of {id, label, color, title} items, in the order given. Items with
   // `dash` are dashed lines, and `chip` ones are notes with no swatch.
   Explorer.prototype.legend = function (items) {
-    var box = el('div', 'gx-legend', this.view);
+    var box = el('div', 'grafts-legend', this.view);
     items.forEach(function (it) {
-      var s = el('span', it.chip ? 'gx-note' : null, box);
+      var s = el('span', it.chip ? 'grafts-note' : null, box);
       if (it.id != null) s.setAttribute('data-sid', it.id);
       if (it.title) s.title = it.title;
-      if (it.dash) css(el('i', 'gx-dash', s), { borderTopColor: it.dash });
+      if (it.dash) css(el('i', 'grafts-dash', s), { borderTopColor: it.dash });
       else if (!it.chip) css(el('i', null, s), { background: it.color });
       s.appendChild(document.createTextNode(it.label));
     });
@@ -1673,7 +1673,7 @@
   };
   Explorer.prototype.noSeason = function () {
     if (this.spec.season) return false;
-    el('div', 'gx-empty', this.view, 'No seasonal period');
+    el('div', 'grafts-empty', this.view, 'No seasonal period');
     return true;
   };
 
@@ -1684,7 +1684,7 @@
     var d = this.data(s.id, true);
     if (d === undefined) {
       this.need([s.id], true);
-      el('div', 'gx-empty', view, 'Loading…');
+      el('div', 'grafts-empty', view, 'Loading…');
       return;
     }
     var lines = this.seasonLines(d, s.id);
@@ -1717,17 +1717,17 @@
   // The hovered series stands out wherever it is drawn
   Explorer.prototype.applyHighlight = function () {
     var id = this.state.hover, right = this.focusPane.parentNode;
-    right.querySelectorAll('.gx-hl').forEach(function (e) { e.classList.remove('gx-hl'); });
-    right.querySelectorAll('.gx-has-hl').forEach(function (e) { e.classList.remove('gx-has-hl'); });
-    this.focusPane.classList.toggle('gx-hl', id != null && id === this.state.focus);
+    right.querySelectorAll('.grafts-hl').forEach(function (e) { e.classList.remove('grafts-hl'); });
+    right.querySelectorAll('.grafts-has-hl').forEach(function (e) { e.classList.remove('grafts-has-hl'); });
+    this.focusPane.classList.toggle('grafts-hl', id != null && id === this.state.focus);
     if (id == null) return;
     right.querySelectorAll('[data-sid="' + id + '"]').forEach(function (e) {
-      e.classList.add('gx-hl');
-      var plot = e.closest('.gx-plot');
-      if (plot && plot.querySelectorAll('g[data-sid]').length > 1 && e.tagName.toLowerCase() === 'g') plot.classList.add('gx-has-hl');
+      e.classList.add('grafts-hl');
+      var plot = e.closest('.grafts-plot');
+      if (plot && plot.querySelectorAll('g[data-sid]').length > 1 && e.tagName.toLowerCase() === 'g') plot.classList.add('grafts-has-hl');
     });
     // Thicken the hovered line, not just its group
-    right.querySelectorAll('g.gx-hl > path.gx-y').forEach(function (p) { p.classList.add('gx-hl'); });
+    right.querySelectorAll('g.grafts-hl > path.grafts-y').forEach(function (p) { p.classList.add('grafts-hl'); });
   };
 
   // ---- Start -------------------------------------------------------------------
@@ -1780,14 +1780,14 @@
   function mount(node, opts) {
     opts = opts || {};
     var source = opts.source || remote();
-    node.classList.add('gx');
+    node.classList.add('grafts-root');
     if (opts.height != null) node.style.height = typeof opts.height === 'number' ? opts.height + 'px' : opts.height;
-    if (!node.firstChild) el('p', 'gx-loading', node, 'Loading the series graph…');
+    if (!node.firstChild) el('p', 'grafts-loading', node, 'Loading the series graph…');
     return source.spec()
       .then(function (spec) { return new Explorer(node, spec, source, opts.storageKey || specKey(spec)); })
       .catch(function (err) {
         node.textContent = '';
-        el('p', 'gx-error', node, 'Could not load the series graph: ' + err.message);
+        el('p', 'grafts-error', node, 'Could not load the series graph: ' + err.message);
         if (window.console) console.error(err);
       });
   }

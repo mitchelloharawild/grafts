@@ -56,7 +56,9 @@
 #' #   grafts::grafts_serve(host = "0.0.0.0")'
 #' @export
 grafts_api <- function(api, explorer, path = "/", max_ids = 1000) {
-  model <- check_explorer(explorer)$model
+  explorer <- check_explorer(explorer)
+  model <- explorer$model
+  title <- explorer$options$title
   path <- paste0("/", gsub("^/+|/+$", "", path), "/")
   path <- sub("^//$", "/", path)
 
@@ -115,6 +117,9 @@ grafts_api <- function(api, explorer, path = "/", max_ids = 1000) {
   }
   for (f in files) {
     body <- if (isTRUE(f$binary)) read_bytes(file.path(www, f$file)) else read_text(file.path(www, f$file))
+    if (f$file == "index.html") {
+      body <- sub("<title>Graph explorer</title>", paste0("<title>", escape_html(title), "</title>"), body, fixed = TRUE)
+    }
     api <- plumber2::api_get(
       api, f$route, local({
         body <- body

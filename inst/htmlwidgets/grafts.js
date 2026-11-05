@@ -7,7 +7,7 @@ HTMLWidgets.widget({
     var drawn = null;
     return {
       renderValue: function (x) {
-        if (drawn) drawn.then(function (gx) { if (gx) gx.destroy(); });
+        if (drawn) drawn.then(function (e) { if (e) e.destroy(); });
         el.textContent = '';
         // The explorer fills the widget, which htmlwidgets sizes
         var box = document.createElement('div');

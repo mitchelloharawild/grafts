@@ -43,6 +43,11 @@ test_that("the font is served with the app, and no third party is called", {
   expect_false(grepl("googleapis", hit(api, "/")$body, fixed = TRUE))
 })
 
+test_that("the served page has the explorer's title", {
+  api <- grafts_api(plumber2::api(doc_type = NULL), grafts(agg, options = grafts_options(title = "Tourism & more")))
+  expect_match(hit(api, "/")$body, "<title>Tourism &amp; more</title>", fixed = TRUE)
+})
+
 test_that("a health route reports the series", {
   api <- grafts_api(plumber2::api(doc_type = NULL), grafts(agg))
   res <- hit(api, "/api/health")

@@ -13,7 +13,8 @@ grafts_options(
   max_points = 1000,
   width = NULL,
   height = NULL,
-  element_id = NULL
+  element_id = NULL,
+  title = "Graph explorer"
 )
 }
 \arguments{
@@ -48,6 +49,9 @@ pixels or as a CSS length. In documents and Shiny the height defaults to
 600px, and a page from \code{\link[=grafts_save]{grafts_save()}} fills the window.}
 
 \item{element_id}{An id for the explorer's element in a document.}
+
+\item{title}{The title of the page, for the browser's tab: served by
+\code{\link[=grafts_serve]{grafts_serve()}} and \code{\link[=grafts_api]{grafts_api()}}, and written by \code{\link[=grafts_save]{grafts_save()}}.}
 }
 \value{
 A \code{grafts_options} list, for the \code{options} argument of

@@ -15,9 +15,11 @@
 #' @inheritParams grafts_api
 #' @param file The HTML file to write.
 #' @param self_contained Write a single file holding the explorer's script,
-#'   styles and data. When `FALSE`, `file` loads `grafts.js`,
-#'   `grafts.css` and `data.json` written beside it. Browsers only load
-#'   `data.json` when the page is served over http(s), not opened from disk.
+#'   styles and data. When `FALSE`, `file` loads `grafts.js` and
+#'   `grafts.css` written beside it, and its data from a `.json` file named
+#'   after `file` (`page.html` loads `page-data.json`), so pages in one
+#'   directory share the script and styles but not their data. Browsers only
+#'   load the data when the page is served over http(s), not opened from disk.
 #' @return `file`, invisibly.
 #' @examples
 #' tourism_agg <- fabletools::aggregate_key(
@@ -39,35 +41,36 @@ grafts_save <- function(explorer, file, self_contained = TRUE) {
     c(
       "<!doctype html>", "<html lang=\"en\">", "<head>", "<meta charset=\"utf-8\">",
       "<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">",
-      "<title>Graph explorer</title>", head,
+      paste0("<title>", escape_html(x$options$title), "</title>"), head,
       "<style>",
       "  html, body { margin: 0; background: #F6F7F9; }",
       "  @media (prefers-color-scheme: dark) { html, body { background: #0F1115; } }",
-      paste0("  body > .gx { height: ", css_length(x$options$height, "100vh"), "; }"),
-      "</style>", "</head>", "<body>", "<div id=\"gx\" class=\"gx\"></div>", body, "</body>", "</html>"
+      paste0("  body > .grafts-root { height: ", css_length(x$options$height, "100vh"), "; }"),
+      "</style>", "</head>", "<body>", "<div id=\"grafts-root\" class=\"grafts-root\"></div>", body, "</body>", "</html>"
     )
   }
   mount <- function(source) {
-    c("<script>", paste0("  Grafts.mount(document.getElementById('gx'), { source: Grafts.inline(", source, ") });"), "</script>")
+    c("<script>", paste0("  Grafts.mount(document.getElementById('grafts-root'), { source: Grafts.inline(", source, ") });"), "</script>")
   }
   if (self_contained) {
     html <- page(
       c("<style>", read_text(file.path(www, "grafts.css")), "</style>"),
       c(
-        paste0("<script type=\"application/json\" id=\"gx-data\">", json, "</script>"),
+        paste0("<script type=\"application/json\" id=\"grafts-data\">", json, "</script>"),
         "<script>", escape_script(read_text(file.path(www, "grafts.js"))), "</script>",
-        mount("document.getElementById('gx-data').textContent")
+        mount("document.getElementById('grafts-data').textContent")
       )
     )
   } else {
     dir <- dirname(file)
     file.copy(file.path(www, c("grafts.js", "grafts.css")), dir, overwrite = TRUE)
-    write_text(json, file.path(dir, "data.json"))
+    data_file <- paste0(tools::file_path_sans_ext(basename(file)), "-data.json")
+    write_text(json, file.path(dir, data_file))
     html <- page(
       "<link rel=\"stylesheet\" href=\"grafts.css\">",
       c(
         "<script src=\"grafts.js\"></script>",
-        mount("fetch('data.json').then(function (r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })")
+        mount(paste0("fetch(", to_json(utils::URLencode(data_file, reserved = TRUE)), ").then(function (r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })"))
       )
     )
   }
@@ -144,6 +147,12 @@ check_payload_size <- function(json, max = 5e6) {
       i = "Serve large data a series at a time with {.fn grafts_api}, or by printing the explorer in the console."
     ))
   }
+}
+
+escape_html <- function(x) {
+  x <- gsub("&", "&amp;", x, fixed = TRUE)
+  x <- gsub("<", "&lt;", x, fixed = TRUE)
+  gsub(">", "&gt;", x, fixed = TRUE)
 }
 
 # JSON's "<" only appear in strings, where < reads the same, so it can't

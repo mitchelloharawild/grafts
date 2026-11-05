@@ -33,6 +33,8 @@
 #' @param width,height Size of the explorer when written into a page, in
 #'   pixels or as a CSS length. In documents and Shiny the height defaults to
 #'   600px, and a page from [grafts_save()] fills the window.
+#' @param title The title of the page, for the browser's tab: served by
+#'   [grafts_serve()] and [grafts_api()], and written by [grafts_save()].
 #' @param element_id An id for the explorer's element in a document.
 #' @return A `grafts_options` list, for the `options` argument of
 #'   [grafts()].
@@ -49,7 +51,8 @@
 grafts_options <- function(views = c("grid", "overlay", "stacked", "season"),
                            additive = NULL, season = NULL, theme = c("system", "light", "dark"),
                            persist = TRUE, max_points = 1000,
-                           width = NULL, height = NULL, element_id = NULL) {
+                           width = NULL, height = NULL, element_id = NULL,
+                           title = "Graph explorer") {
   explicit <- !missing(views)
   views <- arg_match(views, c("grid", "overlay", "stacked", "season"), multiple = TRUE)
   views <- unique(views)
@@ -65,11 +68,12 @@ grafts_options <- function(views = c("grid", "overlay", "stacked", "season"),
   }
   check_size(width)
   check_size(height)
+  if (!is_string(title)) abort("`title` must be a string.")
   if (!(is.null(element_id) || is_string(element_id))) abort("`element_id` must be `NULL` or a string.")
   structure(
     list(views = views, additive = additive, season = season, theme = theme,
          persist = persist, max_points = max_points,
-         width = width, height = height, element_id = element_id),
+         width = width, height = height, element_id = element_id, title = title),
     explicit_views = explicit,
     class = "grafts_options"
   )
