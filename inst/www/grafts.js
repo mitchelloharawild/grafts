@@ -1201,6 +1201,30 @@
   };
   Explorer.prototype.rowY = function (d) { return 34 + d * this.rowGap; };
 
+  // "+k more" chips for wide groups
+  Explorer.prototype.syncMore = function (L) {
+    var self = this, st = this.state, layer = this.world;
+    var moreWant = {};
+    L.more.forEach(function (m) { moreWant[m.key] = m; });
+    Object.keys(this.moreEls).forEach(function (k) {
+      if (moreWant[k]) return;
+      var m = self.moreEls[k];
+      css(m, { opacity: 0, pointerEvents: 'none' });
+      setTimeout(function () { m.remove(); }, 450);
+      delete self.moreEls[k];
+    });
+    L.more.forEach(function (m) {
+      var e = self.moreEls[m.key];
+      if (!e) {
+        e = self.moreEls[m.key] = button('grafts-more', layer);
+        e.addEventListener('click', function (ev) { ev.stopPropagation(); st.showAll[m.key] = true; self.render(); });
+      }
+      e.textContent = '+' + m.n;
+      e.title = 'Show ' + m.n + ' more';
+      css(e, { left: px(m.x), top: px(m.y) });
+    });
+  };
+
   Explorer.prototype.renderGraph = function () {
     var self = this, st = this.state, byId = this.series, layer = this.world;
     this.GW = this.layer.clientWidth || 600;
@@ -1286,28 +1310,7 @@
       e.box.classList.toggle('grafts-second', (parents[w.child] || []).length > 1);
     });
 
-    // "+k more" chips for wide groups
-    var moreWant = {};
-    L.more.forEach(function (m) { moreWant[m.key] = m; });
-    Object.keys(this.moreEls).forEach(function (k) {
-      if (moreWant[k]) return;
-      var m = self.moreEls[k];
-      css(m, { opacity: 0, pointerEvents: 'none' });
-      setTimeout(function () { m.remove(); }, 450);
-      delete self.moreEls[k];
-    });
-    L.more.forEach(function (m) {
-      var e = self.moreEls[m.key];
-      if (!e) {
-        e = self.moreEls[m.key] = el('button', 'grafts-more', layer);
-        e.type = 'button';
-        e.addEventListener('click', function (ev) { ev.stopPropagation(); st.showAll[m.key] = true; self.render(); });
-      }
-      e.textContent = '+' + m.n;
-      e.title = 'Show ' + m.n + ' more';
-      css(e, { left: px(m.x), top: px(m.y) });
-    });
-
+    this.syncMore(L);
     this.startEl.classList.toggle('grafts-on', !st.groups.length);
     this.renderMenu(pos, L);
     this.renderPeek();
@@ -1729,6 +1732,23 @@
   // Children stacked to their parent, or as shares of it, with the parent
   // dashed. Totals carry on with the first shown model's forecast means, when
   // every series has them. Needs full series, so every block of time lines up.
+  // The bands of a stack: the largest children nearest zero, and any beyond
+  // the colours merged into "Other" on top
+  Explorer.prototype.stackBands = function (g, ds, parent, xs, ext) {
+    var self = this;
+    var ys = ds.map(ext), split = topN(ds, this.P.cat), bands = split.top.map(function (i, r) {
+      return { id: g.kids[i], d: ds[i], y: ys[i], label: self.partLabel(self.series[g.kids[i]], g.e), color: split.color(i, r) };
+    });
+    if (split.rest.length) {
+      bands.push({
+        id: 'other', d: parent, color: this.P.other, label: 'Other (' + split.rest.length + ')',
+        title: split.rest.map(function (i) { return self.partLabel(self.series[g.kids[i]], g.e); }).join(', '),
+        y: xs.map(function (t) { return split.rest.reduce(function (a, i) { return a + (ys[i][t] || 0); }, 0); })
+      });
+    }
+    return bands;
+  };
+
   Explorer.prototype.renderStacked = function (g) {
     var self = this, W = this.view.clientWidth - 24, H = Math.max(120, this.view.clientHeight - 130);
     var ds = g.kids.map(function (id) { return self.data(id, true); });
@@ -1752,18 +1772,7 @@
     };
     // Shares of the parent, not of the children's sum, so incoherent data show
     var whole = xs.map(function (t) { return parent.y[t] || null; });
-    // The largest children nearest zero, and any beyond the colours merged
-    // into "Other" on top
-    var ys = ds.map(ext), split = topN(ds, this.P.cat), bands = split.top.map(function (i, r) {
-      return { id: g.kids[i], d: ds[i], y: ys[i], label: self.partLabel(self.series[g.kids[i]], g.e), color: split.color(i, r) };
-    });
-    if (split.rest.length) {
-      bands.push({
-        id: 'other', d: parent, color: this.P.other, label: 'Other (' + split.rest.length + ')',
-        title: split.rest.map(function (i) { return self.partLabel(self.series[g.kids[i]], g.e); }).join(', '),
-        y: xs.map(function (t) { return split.rest.reduce(function (a, i) { return a + (ys[i][t] || 0); }, 0); })
-      });
-    }
+    var bands = this.stackBands(g, ds, parent, xs, ext);
     // Positive values stack up from zero and negative values down from it,
     // fainter over the forecasts
     var pos = xs.map(function () { return 0; }), neg = pos.slice(), keys = [], lines = [];
